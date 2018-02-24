@@ -54,7 +54,7 @@ namespace SVG {
                 return NAN;
         }
 
-        virtual std::string to_string();
+        virtual std::string to_string(const size_t indent_level = 0);
         std::map < std::string, std::string > attr;
         std::string content;
         std::vector<std::shared_ptr<Element>> children;
@@ -138,7 +138,7 @@ namespace SVG {
         Text(std::pair<float, float> xy, std::string _content) :
                 Text(xy.first, xy.second, _content) {};
 
-        std::string to_string() override;
+        std::string to_string(const size_t) override;
 
     protected:
         std::string tag() override { return "text"; }
@@ -258,8 +258,9 @@ namespace SVG {
 # define to_string_attrib for (auto it = attr.begin(); it != attr.end(); ++it) \
     ret += " " + it->first + "=" + "\"" + it->second += "\""
 
-    std::string Element::to_string() {
-        std::string ret = "<" + tag();
+    std::string Element::to_string(const size_t indent_level) {
+        auto indent = std::string(indent_level, '\t');
+        std::string ret = indent + "<" + tag();
 
         // Set attributes
         to_string_attrib;
@@ -269,16 +270,17 @@ namespace SVG {
 
             // Recursively get strings for child elements
             for (auto it = children.begin(); it != children.end(); ++it)
-                ret += "\t" + (*it)->to_string() + "\n";
+                ret += (*it)->to_string(indent_level + 1) + "\n";
 
-            return ret += "</" + tag() + ">";
+            return ret += indent + "</" + tag() + ">";
         }
 
         return ret += " />";
     }
 
-    std::string Text::to_string() {
-        std::string ret = "<text";
+    std::string Text::to_string(const size_t indent_level) {
+        auto indent = std::string(indent_level, '\t');
+        std::string ret = indent + "<text";
         to_string_attrib;
         return ret += ">" + this->content + "</text>";
     }
