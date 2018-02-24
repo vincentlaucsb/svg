@@ -19,11 +19,7 @@ namespace SVG {
     class Element {
     public:
         Element() {};
-        Element(
-                std::string _tag,
-                std::map < std::string, std::string > _attr) :
-                attr(_attr),
-                tag(_tag) {};
+        Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
 
         template<typename T>
         inline Element& set_attr(std::string key, T value) {
@@ -64,7 +60,7 @@ namespace SVG {
         std::vector<std::shared_ptr<Element>> children;
 
     protected:
-        std::string tag;
+        virtual std::string tag() = 0;
     };
 
     template<>
@@ -83,13 +79,13 @@ namespace SVG {
     public:
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
-        ) : Element("svg", _attr) {};
+        ) : Element(_attr) {};
+    protected:
+        std::string tag() override { return "svg"; }
     };
 
     class Path : public Element {
     public:
-        Path() : Element("path", {}) {};
-
         template<typename T>
         inline void start(T x, T y) {
             /** Start line at (x, y)
@@ -123,6 +119,9 @@ namespace SVG {
             this->line_to(x_start, y_start);
         }
 
+    protected:
+        std::string tag() override { return "path"; }
+
     private:
         float x_start;
         float y_start;
@@ -130,28 +129,30 @@ namespace SVG {
 
     class Text : public Element {
     public:
-        Text() { tag = "text"; };
         Text(float x, float y, std::string _content) {
-            tag = "text";
             set_attr("x", std::to_string(x));
             set_attr("y", std::to_string(y));
             content = _content;
         }
+
         Text(std::pair<float, float> xy, std::string _content) :
                 Text(xy.first, xy.second, _content) {};
 
         std::string to_string() override;
+
+    protected:
+        std::string tag() override { return "text"; }
     };
 
     class Group : public Element {
-    public:
-        Group() : Element("g", {}) {};
+    protected:
+        std::string tag() override { return "g"; }
     };
 
     class Line : public Element {
     public:
         Line() {};
-        Line(float x1, float x2, float y1, float y2) : Element("line", {
+        Line(float x1, float x2, float y1, float y2) : Element({
                 { "x1", std::to_string(x1) },
                 { "x2", std::to_string(x2) },
                 { "y1", std::to_string(y1) },
@@ -169,19 +170,24 @@ namespace SVG {
         inline float get_slope();
 
         std::pair<float, float> along(float percent);
+
+    protected:
+        std::string tag() override { return "line"; }
     };
 
     class Rect : public Element {
     public:
         Rect() {};
         Rect(
-                float x, float y, float width, float height) :
-                Element("rect", {
-                        { "x", std::to_string(x) },
-                        { "y", std::to_string(y) },
-                        { "width", std::to_string(width) },
-                        { "height", std::to_string(height) }
-                }) {};
+            float x, float y, float width, float height) :
+            Element({
+                    { "x", std::to_string(x) },
+                    { "y", std::to_string(y) },
+                    { "width", std::to_string(width) },
+                    { "height", std::to_string(height) }
+            }) {};
+    protected:
+        std::string tag() override { return "rect"; }
     };
 
     class Circle : public Element {
@@ -189,15 +195,16 @@ namespace SVG {
         Circle() {};
 
         Circle(float cx, float cy, float radius) :
-                Element("circle", {
+                Element({
                         { "cx", std::to_string(cx) },
                         { "cy", std::to_string(cy) },
                         { "r", std::to_string(radius) }
                 }) {
         };
 
-        Circle(std::pair<float, float> xy, float radius) : Circle(xy.first, xy.second, radius) {
-        };
+        Circle(std::pair<float, float> xy, float radius) : Circle(xy.first, xy.second, radius) {};
+    protected:
+        std::string tag() override { return "circle"; }
     };
 
     float Line::get_slope() {
@@ -252,7 +259,7 @@ namespace SVG {
     ret += " " + it->first + "=" + "\"" + it->second += "\""
 
     std::string Element::to_string() {
-        std::string ret = "<" + tag;
+        std::string ret = "<" + tag();
 
         // Set attributes
         to_string_attrib;
@@ -264,7 +271,7 @@ namespace SVG {
             for (auto it = children.begin(); it != children.end(); ++it)
                 ret += "\t" + (*it)->to_string() + "\n";
 
-            return ret += "</" + tag + ">";
+            return ret += "</" + tag() + ">";
         }
 
         return ret += " />";
