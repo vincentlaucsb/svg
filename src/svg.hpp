@@ -18,6 +18,13 @@ using std::string;
 namespace SVG {
     class Element {
     public:
+        struct BoundingBox {
+            float x1;
+            float x2;
+            float y1;
+            float y2;
+        };
+
         using ChildMap = std::map<std::string, std::vector<Element*>>;
 
         Element() {};
@@ -57,12 +64,15 @@ namespace SVG {
         }
 
         virtual std::string to_string(const size_t indent_level = 0);
+        void set_bbox();
+        virtual BoundingBox get_bbox();
         ChildMap get_children();
         std::map < std::string, std::string > attr;
 
     protected:
         std::vector<std::shared_ptr<Element>> children;
 
+        void set_bbox(Element::BoundingBox&);
         void get_children(ChildMap&);
         virtual std::string tag() = 0;
     };
@@ -77,6 +87,11 @@ namespace SVG {
     inline Element& Element::set_attr(std::string key, const std::string value) {
         this->attr[key] = value;
         return *this;
+    }
+
+    inline Element::BoundingBox Element::get_bbox() {
+        /** Compute the bounding box necessary to contain this element */
+        return { NAN, NAN, NAN, NAN };
     }
 
     class SVG : public Element {
@@ -191,6 +206,8 @@ namespace SVG {
                     { "width", std::to_string(width) },
                     { "height", std::to_string(height) }
             }) {};
+
+        Element::BoundingBox get_bbox() override;
     protected:
         std::string tag() override { return "rect"; }
     };
@@ -208,9 +225,31 @@ namespace SVG {
         };
 
         Circle(std::pair<float, float> xy, float radius) : Circle(xy.first, xy.second, radius) {};
+        Element::BoundingBox get_bbox() override;
     protected:
         std::string tag() override { return "circle"; }
     };
+
+    Element::BoundingBox Rect::get_bbox() {
+        using std::stof;
+        float x = stof(this->attr["x"]), y = stof(this->attr["y"]),
+            width = stof(this->attr["width"]), height = stof(this->attr["height"]);
+
+        return { x, x + width, y, y + height };
+    }
+
+    Element::BoundingBox Circle::get_bbox() {
+        using std::stof;
+        float x = stof(this->attr["cx"]), y = stof(this->attr["cy"]),
+                radius = stof(this->attr["r"]);
+
+        return {
+            x - radius,
+            x + radius,
+            y + radius,
+            y - radius
+        };
+    }
 
     float Line::get_slope() {
         return (y2() - y1()) / (x2() - x1());
@@ -288,6 +327,41 @@ namespace SVG {
         std::string ret = indent + "<text";
         to_string_attrib;
         return ret += ">" + this->content + "</text>";
+    }
+
+    void Element::set_bbox() {
+        /** Modify this element's attributes so it can hold all of its child elements */
+        using std::to_string;
+        using std::stof;
+
+        Element::BoundingBox bbox = this->get_bbox();
+        this->set_bbox(bbox); // Compute the bounding box (recursive)
+        float width = abs(bbox.x1) + abs(bbox.x2),
+            height = abs(bbox.y1) + abs(bbox.y2),
+            x1 = stof(this->attr["x1"]), y1 = stof(this->attr["y1"]);
+
+        this->set_attr("width", width)
+                .set_attr("height", height);
+
+        if (x1 < 0 || y1 < 0)
+            this->set_attr("viewBox",
+                           to_string(x1) + " " + // min-x
+                           to_string(y1) + " " + // min-y
+                           to_string(width) + " " +
+                           to_string(height)
+            );
+    }
+
+    void Element::set_bbox(Element::BoundingBox& box) {
+        // Recursively compute a bounding box
+        auto this_bbox = this->get_bbox();
+        if (this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
+        if (this_bbox.x2 < box.x2) box.x2 = this_bbox.x2;
+        if (this_bbox.y1 < box.y1) box.y1 = this_bbox.y1;
+        if (this_bbox.y2 < box.y2) box.y2 = this_bbox.y2;
+
+        // Recursion
+        for (auto& child: this->children) child->set_bbox(box);
     }
 
     Element::ChildMap Element::get_children() {

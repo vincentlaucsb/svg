@@ -12,8 +12,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e6d49298-e8bb-4abe-a9d4-48ce716c9c9d" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-log.txt" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-log.txt" />
       <change beforePath="$PROJECT_DIR$/src/svg.hpp" afterPath="$PROJECT_DIR$/src/svg.hpp" />
       <change beforePath="$PROJECT_DIR$/tests/svg_tests.cpp" afterPath="$PROJECT_DIR$/tests/svg_tests.cpp" />
     </list>
@@ -31,8 +29,8 @@
       <file leaf-file-name="svg.hpp" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/svg.hpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="351">
-              <caret line="304" column="9" lean-forward="false" selection-start-line="304" selection-start-column="9" selection-end-line="304" selection-end-column="9" />
+            <state relative-caret-position="338">
+              <caret line="342" column="11" lean-forward="true" selection-start-line="342" selection-start-column="11" selection-end-line="342" selection-end-column="11" />
               <folding />
             </state>
           </provider>
@@ -41,18 +39,18 @@
       <file leaf-file-name="svg_tests.cpp" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="401">
-              <caret line="51" column="1" lean-forward="false" selection-start-line="51" selection-start-column="1" selection-end-line="51" selection-end-column="1" />
+            <state relative-caret-position="215">
+              <caret line="59" column="20" lean-forward="true" selection-start-line="59" selection-start-column="20" selection-end-line="59" selection-end-column="20" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="stl_tree.h" pinned="false" current-in-tab="false">
-        <entry file="file://C:/Program Files (x86)/mingw-w64/i686-7.2.0-posix-dwarf-rt_v5-rev1/mingw32/lib/gcc/i686-w64-mingw32/7.2.0/include/c++/bits/stl_tree.h">
+      <file leaf-file-name="catch.hpp" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/tests/catch.hpp">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="163">
-              <caret line="759" column="0" lean-forward="false" selection-start-line="759" selection-start-column="0" selection-end-line="759" selection-end-column="0" />
+              <caret line="8670" column="0" lean-forward="false" selection-start-line="8670" selection-start-column="0" selection-end-line="8670" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -73,6 +71,7 @@
   <component name="FindInProjectRecents">
     <findStrings>
       <find>class Text</find>
+      <find>Circle</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -149,17 +148,26 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Application.SVG_Test">
+  <component name="RunManager" selected="Catch.set_bbox() Test - Nested">
+    <configuration name="set_bbox() Test - Nested" type="CMakeCatchTestRunConfigurationType" factoryName="Catch Test" temporary="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="SVG" TARGET_NAME="SVG_Test" RUN_TARGET_PROJECT_NAME="SVG" RUN_TARGET_NAME="SVG_Test" TEST_CLASS="[test_set_bbox_nested]" TEST_METHOD="set_bbox() Test - Nested" TEST_MODE="SUITE_TEST">
+      <envs />
+    </configuration>
     <configuration name="Build All" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" CONFIG_NAME="Debug" EXPLICIT_BUILD_TARGET_NAME="all">
       <envs />
     </configuration>
     <configuration name="SVG_Test" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" PROJECT_NAME="SVG" TARGET_NAME="SVG_Test" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="SVG" RUN_TARGET_NAME="SVG_Test">
       <envs />
     </configuration>
-    <list size="2">
+    <list size="3">
       <item index="0" class="java.lang.String" itemvalue="Application.Build All" />
       <item index="1" class="java.lang.String" itemvalue="Application.SVG_Test" />
+      <item index="2" class="java.lang.String" itemvalue="Catch.set_bbox() Test - Nested" />
     </list>
+    <recent_temporary>
+      <list size="1">
+        <item index="0" class="java.lang.String" itemvalue="Catch.set_bbox() Test - Nested" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="ShelveChangesManager" show_recycled="false">
     <option name="remove_strategy" value="false" />
@@ -178,12 +186,43 @@
     </task>
     <servers />
   </component>
+  <component name="TestHistory">
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 40m 04s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 40m 17s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 40m 25s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 40m 31s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 41m 04s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 41m 18s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 41m 31s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 41m 47s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 42m 00s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+    <history-entry file="set_bbox()_Test_-_Nested - 2018.02.25 at 13h 43m 01s.xml">
+      <configuration name="set_bbox() Test - Nested" configurationId="CMakeCatchTestRunConfigurationType" />
+    </history-entry>
+  </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="3399000" />
+    <option name="totallyTimeSpent" value="6431000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-11" y="-11" width="1942" height="1042" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -191,7 +230,7 @@
       <window_info id="CMake" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.0" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32912844" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32912844" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
@@ -222,7 +261,31 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/svg.hpp</url>
+          <line>345</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/svg.hpp</url>
+          <line>342</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/svg.hpp</url>
+          <line>335</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/tests/svg_tests.cpp</url>
+          <line>59</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+      </breakpoints>
+      <option name="time" value="6" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
@@ -287,16 +350,24 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/svg.hpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="351">
-          <caret line="304" column="9" lean-forward="false" selection-start-line="304" selection-start-column="9" selection-end-line="304" selection-end-column="9" />
+        <state relative-caret-position="338">
+          <caret line="342" column="11" lean-forward="true" selection-start-line="342" selection-start-column="11" selection-end-line="342" selection-end-column="11" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/catch.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="163">
+          <caret line="8670" column="0" lean-forward="false" selection-start-line="8670" selection-start-column="0" selection-end-line="8670" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="401">
-          <caret line="51" column="1" lean-forward="false" selection-start-line="51" selection-start-column="1" selection-end-line="51" selection-end-column="1" />
+        <state relative-caret-position="215">
+          <caret line="59" column="20" lean-forward="true" selection-start-line="59" selection-start-column="20" selection-end-line="59" selection-end-column="20" />
           <folding />
         </state>
       </provider>

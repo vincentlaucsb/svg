@@ -50,3 +50,16 @@ TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
     REQUIRE(child_map["g"].size() == 1);
     REQUIRE(child_map["circle"].size() == 2);
 }
+
+TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
+    SVG::SVG root;
+    SVG::Group circ_container;
+    circ_container.add_child(SVG::Circle(-100, -100, 100),
+                             SVG::Circle(100, 100, 100));
+    root.add_child(circ_container);
+    root.set_bbox();
+
+    REQUIRE(root.attr["width"] == "400");
+    REQUIRE(root.attr["height"] == "400");
+    REQUIRE(root.attr["viewBox"] == "-200 -200 400 400");
+}
