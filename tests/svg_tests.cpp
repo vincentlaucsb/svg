@@ -54,12 +54,24 @@ TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
 TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
     SVG::SVG root;
     SVG::Group circ_container;
-    circ_container.add_child(SVG::Circle(-100, -100, 100),
-                             SVG::Circle(100, 100, 100));
+    auto c1_ptr = circ_container.add_child(SVG::Circle(-100, -100, 100)),
+        c2_ptr = circ_container.add_child(SVG::Circle(100, 100, 100));
     root.add_child(circ_container);
     root.set_bbox();
+    
+    // Make sure intermediate get_bbox() calls are correct
+    REQUIRE(c1_ptr->get_bbox().x1 == -200);
+    REQUIRE(c1_ptr->get_bbox().x2 == 0);
+    REQUIRE(c1_ptr->get_bbox().y1 == -200);
+    REQUIRE(c1_ptr->get_bbox().y2 == 0);
+    
+    REQUIRE(c2_ptr->get_bbox().x1 == 0);
+    REQUIRE(c2_ptr->get_bbox().x2 == 200);
+    REQUIRE(c2_ptr->get_bbox().y1 == 0);
+    REQUIRE(c2_ptr->get_bbox().y2 == 200);
 
-    REQUIRE(root.attr["width"] == "400");
-    REQUIRE(root.attr["height"] == "400");
-    REQUIRE(root.attr["viewBox"] == "-200 -200 400 400");
+    // Make sure final results are correct
+    REQUIRE(root.attr["width"] == "400.000000");
+    REQUIRE(root.attr["height"] == "400.000000");
+    REQUIRE(root.attr["viewBox"] == "-200.000000 -200.000000 400.000000 400.000000");
 }

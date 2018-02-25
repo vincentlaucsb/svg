@@ -246,8 +246,8 @@ namespace SVG {
         return {
             x - radius,
             x + radius,
-            y + radius,
-            y - radius
+            y - radius,
+            y + radius
         };
     }
 
@@ -338,7 +338,7 @@ namespace SVG {
         this->set_bbox(bbox); // Compute the bounding box (recursive)
         float width = abs(bbox.x1) + abs(bbox.x2),
             height = abs(bbox.y1) + abs(bbox.y2),
-            x1 = stof(this->attr["x1"]), y1 = stof(this->attr["y1"]);
+            x1 = bbox.x1, y1 = bbox.y1;
 
         this->set_attr("width", width)
                 .set_attr("height", height);
@@ -354,11 +354,11 @@ namespace SVG {
 
     void Element::set_bbox(Element::BoundingBox& box) {
         // Recursively compute a bounding box
-        auto this_bbox = this->get_bbox();
-        if (this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
-        if (this_bbox.x2 < box.x2) box.x2 = this_bbox.x2;
-        if (this_bbox.y1 < box.y1) box.y1 = this_bbox.y1;
-        if (this_bbox.y2 < box.y2) box.y2 = this_bbox.y2;
+        auto this_bbox = this->get_bbox();       
+        if (isnan(box.x1) || this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
+        if (isnan(box.x2) || this_bbox.x2 > box.x2) box.x2 = this_bbox.x2;
+        if (isnan(box.y1) || this_bbox.y1 < box.y1) box.y1 = this_bbox.y1;
+        if (isnan(box.y2) || this_bbox.y2 > box.y2) box.y2 = this_bbox.y2;
 
         // Recursion
         for (auto& child: this->children) child->set_bbox(box);
