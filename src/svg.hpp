@@ -18,6 +18,8 @@ using std::string;
 namespace SVG {
     class Element {
     public:
+        using ChildMap = std::map<std::string, std::vector<Element*>>;
+
         Element() {};
         Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
 
@@ -55,11 +57,13 @@ namespace SVG {
         }
 
         virtual std::string to_string(const size_t indent_level = 0);
+        ChildMap get_children();
         std::map < std::string, std::string > attr;
-        std::string content;
-        std::vector<std::shared_ptr<Element>> children;
 
     protected:
+        std::vector<std::shared_ptr<Element>> children;
+
+        void get_children(ChildMap&);
         virtual std::string tag() = 0;
     };
 
@@ -141,6 +145,7 @@ namespace SVG {
         std::string to_string(const size_t) override;
 
     protected:
+        std::string content;
         std::string tag() override { return "text"; }
     };
 
@@ -284,4 +289,19 @@ namespace SVG {
         to_string_attrib;
         return ret += ">" + this->content + "</text>";
     }
+
+    Element::ChildMap Element::get_children() {
+        /** Recursively compute all of the children of an SVG element */
+        Element::ChildMap child_map;
+        this->get_children(child_map);
+        return child_map;
+    }
+
+    void Element::get_children(Element::ChildMap& child_map) {
+        // Helper function for get_children() which actually populates the map
+        for (auto& child: this->children) {
+            child_map[child->tag()].push_back(child.get());
+            child->get_children(child_map); // Recursion
+        }
+    };
 }
