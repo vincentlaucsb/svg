@@ -192,6 +192,7 @@ namespace SVG {
         std::pair<float, float> along(float percent);
 
     protected:
+        Element::BoundingBox get_bbox() override;
         std::string tag() override { return "line"; }
     };
 
@@ -229,6 +230,10 @@ namespace SVG {
     protected:
         std::string tag() override { return "circle"; }
     };
+
+    Element::BoundingBox Line::get_bbox() {
+        return { x1(), x2(), y1(), y2() };
+    }
 
     Element::BoundingBox Rect::get_bbox() {
         using std::stof;

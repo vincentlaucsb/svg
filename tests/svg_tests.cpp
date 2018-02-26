@@ -53,10 +53,16 @@ TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
 
 TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
     SVG::SVG root;
-    SVG::Group circ_container;
+    SVG::Group line_container, circ_container;
     auto c1_ptr = circ_container.add_child(SVG::Circle(-100, -100, 100)),
         c2_ptr = circ_container.add_child(SVG::Circle(100, 100, 100));
+
+    // Lines shouldn't affect bounding box calculations because they're in between circles
+    auto l1_ptr = line_container.add_child(SVG::Line(0, 10, 0, 10)),
+      l2_ptr = line_container.add_child(SVG::Line(0, 0, 0, 10));
+
     root.add_child(circ_container);
+    root.add_child(line_container);
     root.set_bbox();
     
     // Make sure intermediate get_bbox() calls are correct
