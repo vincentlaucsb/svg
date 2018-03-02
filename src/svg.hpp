@@ -9,6 +9,8 @@
 #include <deque>
 #include <vector>
 #include <string>
+#include <sstream> // stringstream
+#include <iomanip> // setprecision
 #include <memory>
 
 using std::deque;
@@ -31,32 +33,32 @@ namespace SVG {
         Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
 
         template<typename T>
-        inline Element& set_attr(std::string key, T value) {
+        Element& set_attr(std::string key, T value) {
             this->attr[key] = std::to_string(value);
             return *this;
         }
 
         template<typename T, typename... Args>
-        inline void add_child(T node, Args... args) {
+        void add_child(T node, Args... args) {
             add_child(node);
             add_child(args...);
         }
 
         template<typename T>
-        inline Element* add_child(T node) {
+        Element* add_child(T node) {
             /** Also return a pointer to the element added */
             this->children.push_back(std::make_shared<T>(node));
             return this->children.back().get();
         }
 
-        inline virtual float get_width() {
+        virtual float get_width() {
             if (attr.find("width") != attr.end())
                 return std::stof(attr["width"]);
             else
                 return NAN;
         }
 
-        inline virtual float get_height() {
+        virtual float get_height() {
             if (attr.find("height") != attr.end())
                 return std::stof(attr["height"]);
             else
@@ -76,6 +78,15 @@ namespace SVG {
         void get_children(ChildMap&);
         virtual std::string tag() = 0;
     };
+
+    template<>
+    inline Element& Element::set_attr(std::string key, const float value) {
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1);
+        ss << value;
+        this->attr[key] = ss.str();
+        return *this;
+    }
 
     template<>
     inline Element& Element::set_attr(std::string key, const char * value) {
@@ -304,15 +315,13 @@ namespace SVG {
         return std::make_pair(x_pos, y_pos);
     }
 
-# define to_string_attrib for (auto it = attr.begin(); it != attr.end(); ++it) \
-    ret += " " + it->first + "=" + "\"" + it->second += "\""
-
     inline std::string Element::to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<" + tag();
 
         // Set attributes
-        to_string_attrib;
+        for (auto it = attr.begin(); it != attr.end(); ++it)
+            ret += " " + it->first + "=" + "\"" + it->second + "\"";
         
         if (!this->children.empty()) {
             ret += ">\n";
@@ -330,7 +339,8 @@ namespace SVG {
     inline std::string Text::to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<text";
-        to_string_attrib;
+        for (auto it = attr.begin(); it != attr.end(); ++it)
+            ret += " " + it->first + "=" + "\"" + it->second + "\"";
         return ret += ">" + this->content + "</text>";
     }
 
@@ -346,15 +356,17 @@ namespace SVG {
             x1 = bbox.x1, y1 = bbox.y1;
 
         this->set_attr("width", width)
-                .set_attr("height", height);
+             .set_attr("height", height);
 
-        if (x1 < 0 || y1 < 0)
-            this->set_attr("viewBox",
-                           to_string(x1) + " " + // min-x
-                           to_string(y1) + " " + // min-y
-                           to_string(width) + " " +
-                           to_string(height)
-            );
+        if (x1 < 0 || y1 < 0) {
+            std::stringstream viewbox;
+            viewbox << std::fixed << std::setprecision(1)
+                << x1 << " " // min-x
+                << y1 << " " // min-y
+                << width << " "
+                << height;
+            this->set_attr("viewBox", viewbox.str());
+        }
     }
 
     inline void Element::set_bbox(Element::BoundingBox& box) {

@@ -77,7 +77,7 @@ TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
     REQUIRE(c2_ptr->get_bbox().y2 == 200);
 
     // Make sure final results are correct
-    REQUIRE(root.attr["width"] == "400.000000");
-    REQUIRE(root.attr["height"] == "400.000000");
-    REQUIRE(root.attr["viewBox"] == "-200.000000 -200.000000 400.000000 400.000000");
+    REQUIRE(root.attr["width"] == "400.0");
+    REQUIRE(root.attr["height"] == "400.0");
+    REQUIRE(root.attr["viewBox"] == "-200.0 -200.0 400.0 400.0");
 }
