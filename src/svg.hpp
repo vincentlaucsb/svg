@@ -231,11 +231,11 @@ namespace SVG {
         std::string tag() override { return "circle"; }
     };
 
-    Element::BoundingBox Line::get_bbox() {
+    inline Element::BoundingBox Line::get_bbox() {
         return { x1(), x2(), y1(), y2() };
     }
 
-    Element::BoundingBox Rect::get_bbox() {
+    inline Element::BoundingBox Rect::get_bbox() {
         using std::stof;
         float x = stof(this->attr["x"]), y = stof(this->attr["y"]),
             width = stof(this->attr["width"]), height = stof(this->attr["height"]);
@@ -243,7 +243,7 @@ namespace SVG {
         return { x, x + width, y, y + height };
     }
 
-    Element::BoundingBox Circle::get_bbox() {
+    inline Element::BoundingBox Circle::get_bbox() {
         using std::stof;
         float x = stof(this->attr["cx"]), y = stof(this->attr["cy"]),
                 radius = stof(this->attr["r"]);
@@ -256,23 +256,23 @@ namespace SVG {
         };
     }
 
-    float Line::get_slope() {
+    inline float Line::get_slope() {
         return (y2() - y1()) / (x2() - x1());
     }
 
-    float Line::get_length() {
+    inline float Line::get_length() {
         return std::sqrt(pow(get_width(), 2) + pow(get_height(), 2));
     }
 
-    float Line::get_width() {
+    inline float Line::get_width() {
         return std::abs(x2() - x1());
     }
 
-    float Line::get_height() {
+    inline float Line::get_height() {
         return std::abs(y2() - y1());
     }
 
-    std::pair<float, float> Line::along(float percent) {
+    inline std::pair<float, float> Line::along(float percent) {
         /** Return the coordinates required to place an element along
          *   this line
          */
@@ -307,7 +307,7 @@ namespace SVG {
 # define to_string_attrib for (auto it = attr.begin(); it != attr.end(); ++it) \
     ret += " " + it->first + "=" + "\"" + it->second += "\""
 
-    std::string Element::to_string(const size_t indent_level) {
+    inline std::string Element::to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<" + tag();
 
@@ -327,14 +327,14 @@ namespace SVG {
         return ret += " />";
     }
 
-    std::string Text::to_string(const size_t indent_level) {
+    inline std::string Text::to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<text";
         to_string_attrib;
         return ret += ">" + this->content + "</text>";
     }
 
-    void Element::set_bbox() {
+    inline void Element::set_bbox() {
         /** Modify this element's attributes so it can hold all of its child elements */
         using std::to_string;
         using std::stof;
@@ -357,7 +357,7 @@ namespace SVG {
             );
     }
 
-    void Element::set_bbox(Element::BoundingBox& box) {
+    inline void Element::set_bbox(Element::BoundingBox& box) {
         // Recursively compute a bounding box
         auto this_bbox = this->get_bbox();       
         if (isnan(box.x1) || this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
@@ -369,14 +369,14 @@ namespace SVG {
         for (auto& child: this->children) child->set_bbox(box);
     }
 
-    Element::ChildMap Element::get_children() {
+    inline Element::ChildMap Element::get_children() {
         /** Recursively compute all of the children of an SVG element */
         Element::ChildMap child_map;
         this->get_children(child_map);
         return child_map;
     }
 
-    void Element::get_children(Element::ChildMap& child_map) {
+    inline void Element::get_children(Element::ChildMap& child_map) {
         // Helper function for get_children() which actually populates the map
         for (auto& child: this->children) {
             child_map[child->tag()].push_back(child.get());
