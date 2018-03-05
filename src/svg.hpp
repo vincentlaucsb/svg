@@ -21,19 +21,19 @@ namespace SVG {
     class Element {
     public:
         struct BoundingBox {
-            float x1;
-            float x2;
-            float y1;
-            float y2;
+            double x1;
+            double x2;
+            double y1;
+            double y2;
         };
 
         using ChildMap = std::map<std::string, std::vector<Element*>>;
 
-        Element() {};
+        Element() = default;
         Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
 
         template<typename T>
-        Element& set_attr(std::string key, T value) {
+        Element& set_attr(const std::string key, T value) {
             this->attr[key] = std::to_string(value);
             return *this;
         }
@@ -51,21 +51,21 @@ namespace SVG {
             return this->children.back().get();
         }
 
-        virtual float get_width() {
+        virtual double get_width() {
             if (attr.find("width") != attr.end())
                 return std::stof(attr["width"]);
             else
                 return NAN;
         }
 
-        virtual float get_height() {
+        virtual double get_height() {
             if (attr.find("height") != attr.end())
                 return std::stof(attr["height"]);
             else
                 return NAN;
         }
 
-        virtual std::string to_string(const size_t indent_level = 0);
+        std::string to_string() { return this->to_string(0); };
         void set_bbox();
         virtual BoundingBox get_bbox();
         ChildMap get_children();
@@ -74,28 +74,35 @@ namespace SVG {
     protected:
         std::vector<std::shared_ptr<Element>> children;
 
+        static std::string double_to_string(const double& value);
         void set_bbox(Element::BoundingBox&);
         void get_children(ChildMap&);
+        virtual std::string to_string(const size_t indent_level);
         virtual std::string tag() = 0;
     };
 
-    template<>
-    inline Element& Element::set_attr(std::string key, const float value) {
+    std::string Element::double_to_string(const double& value) {
+        /** Trim off all but one decimal place when converting a double to string */
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
         ss << value;
-        this->attr[key] = ss.str();
+        return ss.str();
+    }
+
+    template<>
+    inline Element& Element::set_attr(const std::string key, const double value) {
+        this->attr[key] = Element::double_to_string(value);
         return *this;
     }
 
     template<>
-    inline Element& Element::set_attr(std::string key, const char * value) {
+    inline Element& Element::set_attr(const std::string key, const char * value) {
         this->attr[key] = value;
         return *this;
     }
 
     template<>
-    inline Element& Element::set_attr(std::string key, const std::string value) {
+    inline Element& Element::set_attr(const std::string key, const std::string value) {
         this->attr[key] = value;
         return *this;
     }
@@ -140,7 +147,7 @@ namespace SVG {
                                    " " + std::to_string(y);
         }
 
-        inline void line_to(std::pair<float, float> coord) {
+        inline void line_to(std::pair<double, double> coord) {
             this->line_to(coord.first, coord.second);
         }
 
@@ -153,19 +160,19 @@ namespace SVG {
         std::string tag() override { return "path"; }
 
     private:
-        float x_start;
-        float y_start;
+        double x_start;
+        double y_start;
     };
 
     class Text : public Element {
     public:
-        Text(float x, float y, std::string _content) {
-            set_attr("x", std::to_string(x));
-            set_attr("y", std::to_string(y));
+        Text(double x, double y, std::string _content) {
+            set_attr("x", double_to_string(x));
+            set_attr("y", double_to_string(y));
             content = _content;
         }
 
-        Text(std::pair<float, float> xy, std::string _content) :
+        Text(std::pair<double, double> xy, std::string _content) :
                 Text(xy.first, xy.second, _content) {};
 
         std::string to_string(const size_t) override;
@@ -182,25 +189,25 @@ namespace SVG {
 
     class Line : public Element {
     public:
-        Line() {};
-        Line(float x1, float x2, float y1, float y2) : Element({
-                { "x1", std::to_string(x1) },
-                { "x2", std::to_string(x2) },
-                { "y1", std::to_string(y1) },
-                { "y2", std::to_string(y2) }
+        Line() = default;
+        Line(double x1, double x2, double y1, double y2) : Element({
+                { "x1", double_to_string(x1) },
+                { "x2", double_to_string(x2) },
+                { "y1", double_to_string(y1) },
+                { "y2", double_to_string(y2) }
         }) {};
 
-        inline float x1() { return std::stof(this->attr["x1"]); }
-        inline float x2() { return std::stof(this->attr["x2"]); }
-        inline float y1() { return std::stof(this->attr["y1"]); }
-        inline float y2() { return std::stof(this->attr["y2"]); }
+        inline double x1() { return std::stof(this->attr["x1"]); }
+        inline double x2() { return std::stof(this->attr["x2"]); }
+        inline double y1() { return std::stof(this->attr["y1"]); }
+        inline double y2() { return std::stof(this->attr["y2"]); }
 
-        inline float get_width() override;
-        inline float get_height() override;
-        inline float get_length();
-        inline float get_slope();
+        inline double get_width() override;
+        inline double get_height() override;
+        inline double get_length();
+        inline double get_slope();
 
-        std::pair<float, float> along(float percent);
+        std::pair<double, double> along(double percent);
 
     protected:
         Element::BoundingBox get_bbox() override;
@@ -209,14 +216,14 @@ namespace SVG {
 
     class Rect : public Element {
     public:
-        Rect() {};
+        Rect() = default;
         Rect(
-            float x, float y, float width, float height) :
+            double x, double y, double width, double height) :
             Element({
-                    { "x", std::to_string(x) },
-                    { "y", std::to_string(y) },
-                    { "width", std::to_string(width) },
-                    { "height", std::to_string(height) }
+                    { "x", double_to_string(x) },
+                    { "y", double_to_string(y) },
+                    { "width", double_to_string(width) },
+                    { "height", double_to_string(height) }
             }) {};
 
         Element::BoundingBox get_bbox() override;
@@ -226,17 +233,16 @@ namespace SVG {
 
     class Circle : public Element {
     public:
-        Circle() {};
-
-        Circle(float cx, float cy, float radius) :
+        Circle() = default;
+        Circle(double cx, double cy, double radius) :
                 Element({
-                        { "cx", std::to_string(cx) },
-                        { "cy", std::to_string(cy) },
-                        { "r", std::to_string(radius) }
+                        { "cx", double_to_string(cx) },
+                        { "cy", double_to_string(cy) },
+                        { "r", double_to_string(radius) }
                 }) {
         };
 
-        Circle(std::pair<float, float> xy, float radius) : Circle(xy.first, xy.second, radius) {};
+        Circle(std::pair<double, double> xy, double radius) : Circle(xy.first, xy.second, radius) {};
         Element::BoundingBox get_bbox() override;
     protected:
         std::string tag() override { return "circle"; }
@@ -248,7 +254,7 @@ namespace SVG {
 
     inline Element::BoundingBox Rect::get_bbox() {
         using std::stof;
-        float x = stof(this->attr["x"]), y = stof(this->attr["y"]),
+        double x = stof(this->attr["x"]), y = stof(this->attr["y"]),
             width = stof(this->attr["width"]), height = stof(this->attr["height"]);
 
         return { x, x + width, y, y + height };
@@ -256,7 +262,7 @@ namespace SVG {
 
     inline Element::BoundingBox Circle::get_bbox() {
         using std::stof;
-        float x = stof(this->attr["cx"]), y = stof(this->attr["cy"]),
+        double x = stof(this->attr["cx"]), y = stof(this->attr["cy"]),
                 radius = stof(this->attr["r"]);
 
         return {
@@ -267,35 +273,35 @@ namespace SVG {
         };
     }
 
-    inline float Line::get_slope() {
+    inline double Line::get_slope() {
         return (y2() - y1()) / (x2() - x1());
     }
 
-    inline float Line::get_length() {
+    inline double Line::get_length() {
         return std::sqrt(pow(get_width(), 2) + pow(get_height(), 2));
     }
 
-    inline float Line::get_width() {
+    inline double Line::get_width() {
         return std::abs(x2() - x1());
     }
 
-    inline float Line::get_height() {
+    inline double Line::get_height() {
         return std::abs(y2() - y1());
     }
 
-    inline std::pair<float, float> Line::along(float percent) {
+    inline std::pair<double, double> Line::along(double percent) {
         /** Return the coordinates required to place an element along
          *   this line
          */
 
-        float x_pos, y_pos;
+        double x_pos, y_pos;
 
         if (x1() != x2()) {
-            float length = percent * this->get_length();
-            float discrim = std::sqrt(4 * pow(length, 2) * (1 / (1 + pow(get_slope(), 2))));
+            double length = percent * this->get_length();
+            double discrim = std::sqrt(4 * pow(length, 2) * (1 / (1 + pow(get_slope(), 2))));
 
-            float x_a = (2 * x1() + discrim) / 2;
-            float x_b = (2 * x1() - discrim) / 2;
+            double x_a = (2 * x1() + discrim) / 2;
+            double x_b = (2 * x1() - discrim) / 2;
             x_pos = x_a;
 
             if ((x_a > x1() && x_a > x2()) || (x_a < x1() && x_a < x2()))
@@ -320,15 +326,15 @@ namespace SVG {
         std::string ret = indent + "<" + tag();
 
         // Set attributes
-        for (auto it = attr.begin(); it != attr.end(); ++it)
-            ret += " " + it->first + "=" + "\"" + it->second + "\"";
+        for (auto& pair: attr)
+            ret += " " + pair.first + "=" + "\"" + pair.second + "\"";
         
         if (!this->children.empty()) {
             ret += ">\n";
 
             // Recursively get strings for child elements
-            for (auto it = children.begin(); it != children.end(); ++it)
-                ret += (*it)->to_string(indent_level + 1) + "\n";
+            for (auto& child: children)
+                ret += child->to_string(indent_level + 1) + "\n";
 
             return ret += indent + "</" + tag() + ">";
         }
@@ -339,19 +345,18 @@ namespace SVG {
     inline std::string Text::to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<text";
-        for (auto it = attr.begin(); it != attr.end(); ++it)
-            ret += " " + it->first + "=" + "\"" + it->second + "\"";
+        for (auto& pair: attr)
+            ret += " " + pair.first + "=" + "\"" + pair.second + "\"";
         return ret += ">" + this->content + "</text>";
     }
 
     inline void Element::set_bbox() {
         /** Modify this element's attributes so it can hold all of its child elements */
-        using std::to_string;
         using std::stof;
 
         Element::BoundingBox bbox = this->get_bbox();
         this->set_bbox(bbox); // Compute the bounding box (recursive)
-        float width = abs(bbox.x1) + abs(bbox.x2),
+        double width = abs(bbox.x1) + abs(bbox.x2),
             height = abs(bbox.y1) + abs(bbox.y2),
             x1 = bbox.x1, y1 = bbox.y1;
 
