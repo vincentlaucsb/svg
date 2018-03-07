@@ -81,7 +81,7 @@ namespace SVG {
         virtual std::string tag() = 0;
     };
 
-    std::string Element::double_to_string(const double& value) {
+    inline std::string Element::double_to_string(const double& value) {
         /** Trim off all but one decimal place when converting a double to string */
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
