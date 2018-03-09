@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.9)
 project(SVG)
 
 set(CMAKE_CXX_FLAGS "-lpthread -static-libgcc -static-libstdc++")
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${CMAKE_SOURCE_DIR}/tests/)

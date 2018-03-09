@@ -1,4 +1,4 @@
-CFLAGS = -lpthread -std=c++11 -g
+CFLAGS = -lpthread -std=c++14 -g
 SOURCES = src/svg.hpp tests/catch.hpp tests/svg_tests.cpp
 
 all: test

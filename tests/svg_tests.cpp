@@ -2,10 +2,19 @@
 #include "catch.hpp"
 #include "svg.hpp"
 
+SVG::SVG two_circles();
+
+SVG::SVG two_circles() {
+    // Return an SVG with two circles in a <g>
+    SVG::SVG root;
+    auto circ_container = root.add_child<SVG::Group>();
+    (*circ_container) << SVG::Circle() << SVG::Circle();
+    return root;
+}
+
 TEST_CASE("Proper Indentation", "[indent_test]") {
     SVG::SVG root;
-    SVG::Circle circ;
-    root.add_child(circ);
+    auto circ = root.add_child<SVG::Circle>();
     std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
         "\t<circle />\n"
         "</svg>";
@@ -14,11 +23,7 @@ TEST_CASE("Proper Indentation", "[indent_test]") {
 }
 
 TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
-    SVG::SVG root;
-    SVG::Group circ_container;
-    circ_container.add_child(SVG::Circle(), SVG::Circle());
-    root.add_child(circ_container);
-
+    SVG::SVG root = two_circles();
     std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
         "\t<g>\n"
         "\t\t<circle />\n"
@@ -29,10 +34,20 @@ TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
     REQUIRE(root.to_string() == correct);
 }
 
+TEST_CASE("One Decimal Place", "[decimal_place_test]") {
+    SVG::SVG root;
+    root.add_child<SVG::Line>(0.0, 0.0, PI, PI);
+
+    std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
+        "\t<line x1=\"0.0\" x2=\"0.0\" y1=\"3.1\" y2=\"3.1\" />\n"
+        "</svg>";
+
+    REQUIRE(root.to_string() == correct);
+}
+
 TEST_CASE("get_children() Test - Basic", "[test_get_children]") {
     SVG::SVG root;
-    SVG::Circle circ;
-    auto circ_ptr = root.add_child(circ);
+    auto circ_ptr = root.add_child<SVG::Circle>();
     SVG::Element::ChildMap correct = {
         { "circle", std::vector<SVG::Element*>{circ_ptr} }
     };
@@ -41,11 +56,7 @@ TEST_CASE("get_children() Test - Basic", "[test_get_children]") {
 }
 
 TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
-    SVG::SVG root;
-    SVG::Group circ_container;
-    circ_container.add_child(SVG::Circle(), SVG::Circle());
-    root.add_child(circ_container);
-
+    SVG::SVG root = two_circles();
     auto child_map = root.get_children();
     REQUIRE(child_map["g"].size() == 1);
     REQUIRE(child_map["circle"].size() == 2);
@@ -53,16 +64,14 @@ TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
 
 TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
     SVG::SVG root;
-    SVG::Group line_container, circ_container;
-    auto c1_ptr = circ_container.add_child(SVG::Circle(-100, -100, 100)),
-        c2_ptr = circ_container.add_child(SVG::Circle(100, 100, 100));
+    auto line_container = root.add_child<SVG::Group>(),
+        circ_container = root.add_child<SVG::Group>();
+    auto c1_ptr = circ_container->add_child<SVG::Circle>(-100, -100, 100),
+        c2_ptr = circ_container->add_child<SVG::Circle>(100, 100, 100);
 
-    // Lines shouldn't affect bounding box calculations because they're in between circles
-    auto l1_ptr = line_container.add_child(SVG::Line(0, 10, 0, 10)),
-      l2_ptr = line_container.add_child(SVG::Line(0, 0, 0, 10));
-
-    root.add_child(circ_container);
-    root.add_child(line_container);
+    // Lines shouldn't afect bounding box calculations because they're in between circles
+    auto l1_ptr = line_container->add_child<SVG::Line>(0, 10, 0, 10),
+      l2_ptr = line_container->add_child<SVG::Line>(0, 0, 0, 10);
     root.set_bbox();
     
     // Make sure intermediate get_bbox() calls are correct
