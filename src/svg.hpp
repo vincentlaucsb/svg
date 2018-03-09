@@ -26,7 +26,6 @@ namespace SVG {
         using ChildMap = std::map<std::string, std::vector<Element*>>;
 
         Element() = default;
-        // Element(const Element& other) = delete;
         Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
 
         template<typename T>
@@ -78,7 +77,7 @@ namespace SVG {
         virtual std::string tag() = 0;
     };
 
-    std::string Element::double_to_string(const double& value) {
+    inline std::string Element::double_to_string(const double& value) {
         /** Trim off all but one decimal place when converting a double to string */
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);

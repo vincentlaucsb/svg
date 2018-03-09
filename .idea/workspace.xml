@@ -13,7 +13,10 @@
   <component name="ChangeListManager">
     <list default="true" id="e6d49298-e8bb-4abe-a9d4-48ce716c9c9d" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+<<<<<<< HEAD
       <change beforePath="$PROJECT_DIR$/CMakeLists.txt" afterPath="$PROJECT_DIR$/CMakeLists.txt" />
+=======
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
       <change beforePath="$PROJECT_DIR$/src/svg.hpp" afterPath="$PROJECT_DIR$/src/svg.hpp" />
       <change beforePath="$PROJECT_DIR$/tests/svg_tests.cpp" afterPath="$PROJECT_DIR$/tests/svg_tests.cpp" />
     </list>
@@ -31,6 +34,7 @@
       <file leaf-file-name="svg.hpp" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/svg.hpp">
           <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
             <state relative-caret-position="1200">
               <caret line="48" column="28" lean-forward="false" selection-start-line="48" selection-start-column="28" selection-end-line="48" selection-end-column="28" />
               <folding>
@@ -42,6 +46,19 @@
                 <element signature="e#2974#2976#0" expanded="true" />
                 <element signature="e#3635#3647#0" expanded="true" />
                 <element signature="e#3979#3991#0" expanded="true" />
+=======
+            <state relative-caret-position="168">
+              <caret line="67" column="63" lean-forward="false" selection-start-line="67" selection-start-column="63" selection-end-line="67" selection-end-column="63" />
+              <folding>
+                <element signature="e#766#778#0" expanded="true" />
+                <element signature="e#945#975#0" expanded="true" />
+                <element signature="e#1111#1123#0" expanded="true" />
+                <element signature="e#2579#2581#0" expanded="true" />
+                <element signature="e#2766#2768#0" expanded="true" />
+                <element signature="e#2926#2928#0" expanded="true" />
+                <element signature="e#3587#3599#0" expanded="true" />
+                <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
               </folding>
             </state>
           </provider>
@@ -50,11 +67,17 @@
       <file leaf-file-name="svg_tests.cpp" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
           <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
             <state relative-caret-position="400">
               <caret line="16" column="46" lean-forward="true" selection-start-line="16" selection-start-column="46" selection-end-line="16" selection-end-column="46" />
               <folding>
                 <element signature="e#26#46#0" expanded="true" />
               </folding>
+=======
+            <state relative-caret-position="475">
+              <caret line="31" column="56" lean-forward="false" selection-start-line="31" selection-start-column="56" selection-end-line="31" selection-end-column="56" />
+              <folding />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
             </state>
           </provider>
         </entry>
@@ -94,8 +117,11 @@
       <find>double_to_fl</find>
       <find>class Circle</find>
       <find>return this-&gt;to_string</find>
+<<<<<<< HEAD
       <find>shared</find>
       <find>Copy</find>
+=======
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
     </findStrings>
     <replaceStrings>
       <replace>double</replace>
@@ -176,7 +202,11 @@
     </option>
   </component>
   <component name="RunManager" selected="Application.SVG_Test">
+<<<<<<< HEAD
     <configuration name="set_bbox() Test - Nested" type="CMakeCatchTestRunConfigurationType" factoryName="Catch Test" temporary="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="SVG" TARGET_NAME="SVG_Test" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="SVG" RUN_TARGET_NAME="SVG_Test" TEST_CLASS="[test_set_bbox_nested]" TEST_METHOD="set_bbox() Test - Nested" TEST_MODE="SUITE_TEST">
+=======
+    <configuration name="set_bbox() Test - Nested" type="CMakeCatchTestRunConfigurationType" factoryName="Catch Test" temporary="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="SVG" TARGET_NAME="SVG_Test" RUN_TARGET_PROJECT_NAME="SVG" RUN_TARGET_NAME="SVG_Test" TEST_CLASS="[test_set_bbox_nested]" TEST_METHOD="set_bbox() Test - Nested" TEST_MODE="SUITE_TEST">
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
       <envs />
     </configuration>
     <configuration name="Build All" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" CONFIG_NAME="Debug" EXPLICIT_BUILD_TARGET_NAME="all">
@@ -249,7 +279,11 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
+<<<<<<< HEAD
     <option name="totallyTimeSpent" value="11310000" />
+=======
+    <option name="totallyTimeSpent" value="8311000" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
   </component>
   <component name="ToolWindowManager">
     <frame x="-11" y="-11" width="1942" height="1042" extended-state="6" />
@@ -257,6 +291,22 @@
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+<<<<<<< HEAD
+=======
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32912844" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="CMake" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32912844" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="true" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32912844" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
       <window_info id="CMake" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32912844" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
@@ -299,6 +349,14 @@
           <line>336</line>
           <option name="timeStamp" value="4" />
         </line-breakpoint>
+<<<<<<< HEAD
+=======
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/tests/svg_tests.cpp</url>
+          <line>70</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
       </breakpoints>
       <option name="time" value="6" />
     </breakpoint-manager>
@@ -307,6 +365,7 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/src/svg.hpp">
       <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
         <state relative-caret-position="1200">
           <caret line="48" column="28" lean-forward="false" selection-start-line="48" selection-start-column="28" selection-end-line="48" selection-end-column="28" />
           <folding>
@@ -447,6 +506,19 @@
             <element signature="e#2974#2976#0" expanded="true" />
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
+=======
+        <state relative-caret-position="8550">
+          <caret line="342" column="11" lean-forward="true" selection-start-line="342" selection-start-column="11" selection-end-line="342" selection-end-column="11" />
+          <folding>
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           </folding>
         </state>
       </provider>
@@ -471,9 +543,13 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1475">
           <caret line="59" column="20" lean-forward="true" selection-start-line="59" selection-start-column="20" selection-end-line="59" selection-end-column="20" />
+<<<<<<< HEAD
           <folding>
             <element signature="e#26#46#0" expanded="true" />
           </folding>
+=======
+          <folding />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
         </state>
       </provider>
     </entry>
@@ -489,6 +565,7 @@
         <state relative-caret-position="4200">
           <caret line="168" column="33" lean-forward="false" selection-start-line="168" selection-start-column="33" selection-end-line="168" selection-end-column="33" />
           <folding>
+<<<<<<< HEAD
             <element signature="e#814#826#0" expanded="true" />
             <element signature="e#993#1023#0" expanded="true" />
             <element signature="e#1159#1171#0" expanded="true" />
@@ -497,6 +574,16 @@
             <element signature="e#2974#2976#0" expanded="true" />
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
+=======
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           </folding>
         </state>
       </provider>
@@ -515,6 +602,7 @@
         <state relative-caret-position="-1550">
           <caret line="188" column="11" lean-forward="false" selection-start-line="188" selection-start-column="11" selection-end-line="188" selection-end-column="11" />
           <folding>
+<<<<<<< HEAD
             <element signature="e#814#826#0" expanded="true" />
             <element signature="e#993#1023#0" expanded="true" />
             <element signature="e#1159#1171#0" expanded="true" />
@@ -523,6 +611,16 @@
             <element signature="e#2974#2976#0" expanded="true" />
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
+=======
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           </folding>
         </state>
       </provider>
@@ -555,6 +653,17 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="216750">
           <caret line="8670" column="0" lean-forward="false" selection-start-line="8670" selection-start-column="0" selection-end-line="8670" selection-end-column="0" />
+<<<<<<< HEAD
+=======
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="75">
+          <caret line="4" column="50" lean-forward="true" selection-start-line="4" selection-start-column="50" selection-end-line="4" selection-end-column="50" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           <folding />
         </state>
       </provider>
@@ -574,6 +683,7 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
+<<<<<<< HEAD
             <element signature="e#814#826#0" expanded="true" />
             <element signature="e#993#1023#0" expanded="true" />
             <element signature="e#1159#1171#0" expanded="true" />
@@ -582,6 +692,16 @@
             <element signature="e#2974#2976#0" expanded="true" />
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
+=======
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           </folding>
         </state>
       </provider>
@@ -598,6 +718,7 @@
         <state relative-caret-position="4200">
           <caret line="168" column="33" lean-forward="false" selection-start-line="168" selection-start-column="33" selection-end-line="168" selection-end-column="33" />
           <folding>
+<<<<<<< HEAD
             <element signature="e#814#826#0" expanded="true" />
             <element signature="e#993#1023#0" expanded="true" />
             <element signature="e#1159#1171#0" expanded="true" />
@@ -606,6 +727,16 @@
             <element signature="e#2974#2976#0" expanded="true" />
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
+=======
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           </folding>
         </state>
       </provider>
@@ -624,6 +755,7 @@
         <state relative-caret-position="-1550">
           <caret line="188" column="11" lean-forward="false" selection-start-line="188" selection-start-column="11" selection-end-line="188" selection-end-column="11" />
           <folding>
+<<<<<<< HEAD
             <element signature="e#814#826#0" expanded="true" />
             <element signature="e#993#1023#0" expanded="true" />
             <element signature="e#1159#1171#0" expanded="true" />
@@ -632,10 +764,21 @@
             <element signature="e#2974#2976#0" expanded="true" />
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
+=======
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           </folding>
         </state>
       </provider>
     </entry>
+<<<<<<< HEAD
     <entry file="file://$PROJECT_DIR$/src/data.cpp" />
     <entry file="file://$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-log.txt">
       <provider selected="true" editor-type-id="text-editor">
@@ -656,10 +799,17 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="100">
           <caret line="4" column="26" lean-forward="false" selection-start-line="4" selection-start-column="26" selection-end-line="4" selection-end-column="26" />
+=======
+    <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="9" column="0" lean-forward="false" selection-start-line="9" selection-start-column="0" selection-end-line="9" selection-end-column="0" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
           <folding />
         </state>
       </provider>
     </entry>
+<<<<<<< HEAD
     <entry file="file://$PROJECT_DIR$/src/svg.hpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1200">
@@ -674,6 +824,21 @@
             <element signature="e#3635#3647#0" expanded="true" />
             <element signature="e#3979#3991#0" expanded="true" />
           </folding>
+=======
+    <entry file="file://$PROJECT_DIR$/src/data.cpp" />
+    <entry file="file://$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-log.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/flexplot.h" />
+    <entry file="file://C:/Program Files (x86)/mingw-w64/i686-7.2.0-posix-dwarf-rt_v5-rev1/mingw32/lib/gcc/i686-w64-mingw32/7.2.0/include/c++/bits/stl_tree.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="163">
+          <caret line="759" column="0" lean-forward="false" selection-start-line="759" selection-start-column="0" selection-end-line="759" selection-end-column="0" />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
         </state>
       </provider>
     </entry>
@@ -685,13 +850,36 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/svg.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="67" column="63" lean-forward="false" selection-start-line="67" selection-start-column="63" selection-end-line="67" selection-end-column="63" />
+          <folding>
+            <element signature="e#766#778#0" expanded="true" />
+            <element signature="e#945#975#0" expanded="true" />
+            <element signature="e#1111#1123#0" expanded="true" />
+            <element signature="e#2579#2581#0" expanded="true" />
+            <element signature="e#2766#2768#0" expanded="true" />
+            <element signature="e#2926#2928#0" expanded="true" />
+            <element signature="e#3587#3599#0" expanded="true" />
+            <element signature="e#3931#3943#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
       <provider selected="true" editor-type-id="text-editor">
+<<<<<<< HEAD
         <state relative-caret-position="400">
           <caret line="16" column="46" lean-forward="true" selection-start-line="16" selection-start-column="46" selection-end-line="16" selection-end-column="46" />
           <folding>
             <element signature="e#26#46#0" expanded="true" />
           </folding>
+=======
+        <state relative-caret-position="475">
+          <caret line="31" column="56" lean-forward="false" selection-start-line="31" selection-start-column="56" selection-end-line="31" selection-end-column="56" />
+          <folding />
+>>>>>>> d756485ab589123ae763f296aa0e5b07699cbe9d
         </state>
       </provider>
     </entry>

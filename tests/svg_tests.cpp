@@ -37,7 +37,6 @@ TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
 TEST_CASE("One Decimal Place", "[decimal_place_test]") {
     SVG::SVG root;
     root.add_child<SVG::Line>(0.0, 0.0, PI, PI);
-
     std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
         "\t<line x1=\"0.0\" x2=\"0.0\" y1=\"3.1\" y2=\"3.1\" />\n"
         "</svg>";
