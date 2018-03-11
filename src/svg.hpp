@@ -35,10 +35,10 @@ namespace SVG {
         }
 
         template<typename T, typename... Args>
-        Element* add_child(Args&&... args) {
+        T* add_child(Args&&... args) {
             /** Also return a pointer to the element added */
             this->children.push_back(std::make_unique<T>(std::forward<Args>(args)...));
-            return this->children.back().get();
+            return (T*)this->children.back().get();
         }
 
         virtual double get_width() {
