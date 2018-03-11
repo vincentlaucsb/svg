@@ -61,7 +61,7 @@ TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
     REQUIRE(child_map["circle"].size() == 2);
 }
 
-TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
+TEST_CASE("autoscale() Test - Nested", "[test_autoscale_nested]") {
     SVG::SVG root;
     auto line_container = root.add_child<SVG::Group>(),
         circ_container = root.add_child<SVG::Group>();
@@ -71,7 +71,7 @@ TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
     // Lines shouldn't afect bounding box calculations because they're in between circles
     auto l1_ptr = line_container->add_child<SVG::Line>(0, 10, 0, 10),
       l2_ptr = line_container->add_child<SVG::Line>(0, 0, 0, 10);
-    root.set_bbox();
+    root.autoscale();
     
     // Make sure intermediate get_bbox() calls are correct
     REQUIRE(c1_ptr->get_bbox().x1 == -200);
@@ -91,7 +91,7 @@ TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
 }
 
 TEST_CASE("merge() Test", "[merge_test]") {
-    auto s1 = two_circles(), s2 = two_circles();
+    auto s1 = two_circles(200, 200, 200), s2 = two_circles(200, 200, 200);
     s1.merge(s2);
 
     // Make sure there's an appropriate number of child elements
@@ -99,4 +99,8 @@ TEST_CASE("merge() Test", "[merge_test]") {
     REQUIRE(child_map["svg"].size() == 2);
     REQUIRE(child_map["g"].size() == 2);
     REQUIRE(child_map["circle"].size() == 4);
+
+    // Make sure this SVG has correct width/height
+    REQUIRE(s1.width() == 800.0);
+    REQUIRE(s1.height() == 400.0);
 }

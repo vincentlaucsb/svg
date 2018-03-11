@@ -1,5 +1,6 @@
 #pragma once
 #define PI 3.14159265
+#define SVG_TYPE_CHECK static_assert(std::is_base_of<Element, T>::value, "Child must be an SVG element.")
 #include <iostream>
 #include <algorithm> // min, max
 #include <fstream>   // ofstream
@@ -12,6 +13,7 @@
 #include <sstream> // stringstream
 #include <iomanip> // setprecision
 #include <memory>
+#include <type_traits> // is_base_of
 
 namespace SVG {
     class Element {
@@ -23,7 +25,8 @@ namespace SVG {
             double y2;
         };
 
-        using ChildMap = std::map<std::string, std::vector<Element*>>;
+        using ChildList = std::vector<Element*>;
+        using ChildMap = std::map<std::string, ChildList>;
 
         Element() = default;
         Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
@@ -37,33 +40,22 @@ namespace SVG {
         template<typename T, typename... Args>
         T* add_child(Args&&... args) {
             /** Also return a pointer to the element added */
+            SVG_TYPE_CHECK;
             this->children.push_back(std::make_unique<T>(std::forward<Args>(args)...));
             return (T*)this->children.back().get();
         }
 
-        virtual double get_width() {
-            if (attr.find("width") != attr.end())
-                return std::stof(attr["width"]);
-            else
-                return NAN;
-        }
-
-        virtual double get_height() {
-            if (attr.find("height") != attr.end())
-                return std::stof(attr["height"]);
-            else
-                return NAN;
-        }
-
         template<typename T>
         Element& operator<<(T&& node) {
+            SVG_TYPE_CHECK;
             this->children.push_back(std::make_unique<T>(std::move(node)));
             return *this;
         }
 
         std::string to_string() { return this->to_string(0); };
-        void set_bbox();
+        void autoscale();
         virtual BoundingBox get_bbox();
+        ChildList get_immediate_children(const std::string tag="");
         ChildMap get_children();
         std::map < std::string, std::string > attr;
 
@@ -71,7 +63,7 @@ namespace SVG {
         std::vector<std::unique_ptr<Element>> children;
 
         static std::string double_to_string(const double& value);
-        void set_bbox(Element::BoundingBox&);
+        void get_bbox(Element::BoundingBox&);
         void get_children(ChildMap&);
         virtual std::string to_string(const size_t indent_level);
         virtual std::string tag() = 0;
@@ -103,22 +95,47 @@ namespace SVG {
         return *this;
     }
 
+    inline Element::ChildList Element::get_immediate_children(const std::string tag) {
+        /** Return immediate children that have a given tag (or return all otherwise) */
+        Element::ChildList ret;
+        for (auto& child: this->children)
+            if (tag.empty() || child->tag() == tag) ret.push_back(child.get());
+        return ret;
+    }
+
     inline Element::BoundingBox Element::get_bbox() {
         /** Compute the bounding box necessary to contain this element */
         return { NAN, NAN, NAN, NAN };
     }
 
-    class SVG : public Element {
+    class Shape: public Element {
+        /** Abstract base class for any SVG elements that have a width and height */
+    public:
+        using Element::Element;
+        virtual double width() {
+            if (attr.find("width") != attr.end())
+                return std::stof(attr["width"]);
+            return NAN;
+        }
+
+        virtual double height() {
+            if (attr.find("height") != attr.end())
+                return std::stof(attr["height"]);
+            return NAN;
+        }
+    };
+
+    class SVG : public Shape {
     public:
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
-        ) : Element(_attr) {};
+        ) : Shape(_attr) {};
         void merge(SVG& right);
     protected:
         std::string tag() override { return "svg"; }
     };
 
-    class Path : public Element {
+    class Path : public Shape {
     public:
         template<typename T>
         inline void start(T x, T y) {
@@ -184,25 +201,25 @@ namespace SVG {
         std::string tag() override { return "g"; }
     };
 
-    class Line : public Element {
+    class Line : public Shape {
     public:
         Line() = default;
-        Line(double x1, double x2, double y1, double y2) : Element({
+        Line(double x1, double x2, double y1, double y2) : Shape({
                 { "x1", double_to_string(x1) },
                 { "x2", double_to_string(x2) },
                 { "y1", double_to_string(y1) },
                 { "y2", double_to_string(y2) }
         }) {};
 
-        inline double x1() { return std::stof(this->attr["x1"]); }
-        inline double x2() { return std::stof(this->attr["x2"]); }
-        inline double y1() { return std::stof(this->attr["y1"]); }
-        inline double y2() { return std::stof(this->attr["y2"]); }
+        double x1() { return std::stof(this->attr["x1"]); }
+        double x2() { return std::stof(this->attr["x2"]); }
+        double y1() { return std::stof(this->attr["y1"]); }
+        double y2() { return std::stof(this->attr["y2"]); }
 
-        inline double get_width() override;
-        inline double get_height() override;
-        inline double get_length();
-        inline double get_slope();
+        double width() override;
+        double height() override;
+        double get_length();
+        double get_slope();
 
         std::pair<double, double> along(double percent);
 
@@ -211,12 +228,12 @@ namespace SVG {
         std::string tag() override { return "line"; }
     };
 
-    class Rect : public Element {
+    class Rect : public Shape {
     public:
         Rect() = default;
         Rect(
             double x, double y, double width, double height) :
-            Element({
+            Shape({
                     { "x", double_to_string(x) },
                     { "y", double_to_string(y) },
                     { "width", double_to_string(width) },
@@ -275,14 +292,14 @@ namespace SVG {
     }
 
     inline double Line::get_length() {
-        return std::sqrt(pow(get_width(), 2) + pow(get_height(), 2));
+        return std::sqrt(pow(width(), 2) + pow(height(), 2));
     }
 
-    inline double Line::get_width() {
+    inline double Line::width() {
         return std::abs(x2() - x1());
     }
 
-    inline double Line::get_height() {
+    inline double Line::height() {
         return std::abs(y2() - y1());
     }
 
@@ -347,12 +364,12 @@ namespace SVG {
         return ret += ">" + this->content + "</text>";
     }
 
-    inline void Element::set_bbox() {
+    inline void Element::autoscale() {
         /** Modify this element's attributes so it can hold all of its child elements */
         using std::stof;
 
         Element::BoundingBox bbox = this->get_bbox();
-        this->set_bbox(bbox); // Compute the bounding box (recursive)
+        this->get_bbox(bbox); // Compute the bounding box (recursive)
         double width = abs(bbox.x1) + abs(bbox.x2),
             height = abs(bbox.y1) + abs(bbox.y2),
             x1 = bbox.x1, y1 = bbox.y1;
@@ -371,8 +388,8 @@ namespace SVG {
         }
     }
 
-    inline void Element::set_bbox(Element::BoundingBox& box) {
-        // Recursively compute a bounding box
+    inline void Element::get_bbox(Element::BoundingBox& box) {
+        /** Recursively compute a bounding box */
         auto this_bbox = this->get_bbox();       
         if (isnan(box.x1) || this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
         if (isnan(box.x2) || this_bbox.x2 > box.x2) box.x2 = this_bbox.x2;
@@ -380,7 +397,7 @@ namespace SVG {
         if (isnan(box.y2) || this_bbox.y2 > box.y2) box.y2 = this_bbox.y2;
 
         // Recursion
-        for (auto& child: this->children) child->set_bbox(box);
+        for (auto& child: this->children) child->get_bbox(box);
     }
 
     inline Element::ChildMap Element::get_children() {
@@ -405,12 +422,24 @@ namespace SVG {
         auto left = std::make_unique<SVG>(SVG());
         for (auto& child: this->children)
             left->children.push_back(std::move(child));
-        left->set_bbox();
         this->children.clear();
         this->children.push_back(std::move(left));
 
         // Move right
-        right.set_bbox();
         this->children.push_back(std::make_unique<SVG>(std::move(right)));
+
+        // Set bounding box of individual pieces
+        for (auto& svg_child: this->get_immediate_children("svg"))
+            svg_child->autoscale();
+
+        // Set x position for child SVG elements, and compute width/height for this
+        double x = 0, height = 0;
+        for (auto& svg_child: this->get_immediate_children("svg")) {
+            svg_child->set_attr("x", x).set_attr("y", 0);
+            x += ((SVG*)svg_child)->width();
+            height = std::max(height, ((SVG*)svg_child)->height());
+        }
+
+        this->set_attr("width", x).set_attr("height", height);
     }
 }

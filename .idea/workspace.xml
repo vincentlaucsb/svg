@@ -30,9 +30,18 @@
       <file leaf-file-name="svg.hpp" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/svg.hpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="376">
-              <caret line="413" column="74" lean-forward="true" selection-start-line="413" selection-start-column="74" selection-end-line="413" selection-end-column="74" />
-              <folding />
+            <state relative-caret-position="11100">
+              <caret line="444" column="1" lean-forward="true" selection-start-line="444" selection-start-column="1" selection-end-line="444" selection-end-column="1" />
+              <folding>
+                <element signature="e#141#160#0" expanded="true" />
+                <element signature="e#1068#1098#0" expanded="true" />
+                <element signature="e#1395#1407#0" expanded="true" />
+                <element signature="e#2510#2512#0" expanded="true" />
+                <element signature="e#2697#2699#0" expanded="true" />
+                <element signature="e#2857#2859#0" expanded="true" />
+                <element signature="e#4408#4420#0" expanded="true" />
+                <element signature="e#4752#4764#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -40,8 +49,8 @@
       <file leaf-file-name="svg_tests.cpp" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1276">
-              <caret line="101" column="1" lean-forward="true" selection-start-line="101" selection-start-column="1" selection-end-line="101" selection-end-column="1" />
+            <state relative-caret-position="401">
+              <caret line="105" column="1" lean-forward="true" selection-start-line="105" selection-start-column="1" selection-end-line="105" selection-end-column="1" />
               <folding />
             </state>
           </provider>
@@ -76,10 +85,20 @@
       <find>operator&lt;&lt;</find>
       <find>add_child</find>
       <find>class SVG</find>
+      <find>add_c</find>
+      <find>SVG_TYPE_CHECK</find>
+      <find>TwoDimen</find>
+      <find>get_width()</find>
+      <find>get_height()</find>
+      <find>inline</find>
       <find>merge</find>
+      <find>set_bbox</find>
     </findStrings>
     <replaceStrings>
       <replace>double</replace>
+      <replace>width()</replace>
+      <replace>height()</replace>
+      <replace>autoscale</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -89,8 +108,8 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/CMakeLists.txt" />
-        <option value="$PROJECT_DIR$/tests/svg_tests.cpp" />
         <option value="$PROJECT_DIR$/src/svg.hpp" />
+        <option value="$PROJECT_DIR$/tests/svg_tests.cpp" />
       </list>
     </option>
   </component>
@@ -196,6 +215,7 @@
       <workItem from="1520627934367" duration="42000" />
       <workItem from="1520743113158" duration="1707000" />
       <workItem from="1520747278339" duration="2056000" />
+      <workItem from="1520792344842" duration="4711000" />
     </task>
     <servers />
   </component>
@@ -232,7 +252,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="12074000" />
+    <option name="totallyTimeSpent" value="16785000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-11" y="-11" width="1942" height="1042" extended-state="6" />
@@ -266,23 +286,6 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/svg.hpp</url>
-          <line>347</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/svg.hpp</url>
-          <line>344</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/svg.hpp</url>
-          <line>337</line>
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-      </breakpoints>
       <option name="time" value="9" />
     </breakpoint-manager>
     <watches-manager>
@@ -303,9 +306,51 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/src/svg.hpp">
       <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="10325">
+          <caret line="413" column="74" lean-forward="false" selection-start-line="413" selection-start-column="74" selection-end-line="413" selection-end-column="74" />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="100">
+          <caret line="4" column="26" lean-forward="false" selection-start-line="4" selection-start-column="26" selection-end-line="4" selection-end-column="26" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2525">
+          <caret line="101" column="1" lean-forward="true" selection-start-line="101" selection-start-column="1" selection-end-line="101" selection-end-column="1" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/svg.hpp">
+      <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -329,7 +374,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1675">
           <caret line="67" column="51" lean-forward="true" selection-start-line="67" selection-start-column="51" selection-end-line="67" selection-end-column="51" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -361,7 +415,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="8550">
           <caret line="342" column="11" lean-forward="true" selection-start-line="342" selection-start-column="11" selection-end-line="342" selection-end-column="11" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -400,7 +463,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4200">
           <caret line="168" column="33" lean-forward="false" selection-start-line="168" selection-start-column="33" selection-end-line="168" selection-end-column="33" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -417,7 +489,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-1550">
           <caret line="188" column="11" lean-forward="false" selection-start-line="188" selection-start-column="11" selection-end-line="188" selection-end-column="11" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -465,7 +546,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -480,7 +570,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4200">
           <caret line="168" column="33" lean-forward="false" selection-start-line="168" selection-start-column="33" selection-end-line="168" selection-end-column="33" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -497,7 +596,16 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-1550">
           <caret line="188" column="11" lean-forward="false" selection-start-line="188" selection-start-column="11" selection-end-line="188" selection-end-column="11" />
-          <folding />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -535,16 +643,25 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/svg.hpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="376">
-          <caret line="413" column="74" lean-forward="true" selection-start-line="413" selection-start-column="74" selection-end-line="413" selection-end-column="74" />
-          <folding />
+        <state relative-caret-position="11100">
+          <caret line="444" column="1" lean-forward="true" selection-start-line="444" selection-start-column="1" selection-end-line="444" selection-end-column="1" />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+            <element signature="e#1068#1098#0" expanded="true" />
+            <element signature="e#1395#1407#0" expanded="true" />
+            <element signature="e#2510#2512#0" expanded="true" />
+            <element signature="e#2697#2699#0" expanded="true" />
+            <element signature="e#2857#2859#0" expanded="true" />
+            <element signature="e#4408#4420#0" expanded="true" />
+            <element signature="e#4752#4764#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1276">
-          <caret line="101" column="1" lean-forward="true" selection-start-line="101" selection-start-column="1" selection-end-line="101" selection-end-column="1" />
+        <state relative-caret-position="401">
+          <caret line="105" column="1" lean-forward="true" selection-start-line="105" selection-start-column="1" selection-end-line="105" selection-end-column="1" />
           <folding />
         </state>
       </provider>
