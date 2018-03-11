@@ -2,13 +2,13 @@
 #include "catch.hpp"
 #include "svg.hpp"
 
-SVG::SVG two_circles();
+SVG::SVG two_circles(int x = 0, int y = 0, int r = 0);
 
-SVG::SVG two_circles() {
+SVG::SVG two_circles(int x, int y, int r) {
     // Return an SVG with two circles in a <g>
     SVG::SVG root;
     auto circ_container = root.add_child<SVG::Group>();
-    (*circ_container) << SVG::Circle() << SVG::Circle();
+    (*circ_container) << SVG::Circle(x, y, r) << SVG::Circle(x, y, r);
     return root;
 }
 
@@ -26,8 +26,8 @@ TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
     SVG::SVG root = two_circles();
     std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
         "\t<g>\n"
-        "\t\t<circle />\n"
-        "\t\t<circle />\n"
+        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
+        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
         "\t</g>\n"
         "</svg>";
 
@@ -88,4 +88,15 @@ TEST_CASE("set_bbox() Test - Nested", "[test_set_bbox_nested]") {
     REQUIRE(root.attr["width"] == "400.0");
     REQUIRE(root.attr["height"] == "400.0");
     REQUIRE(root.attr["viewBox"] == "-200.0 -200.0 400.0 400.0");
+}
+
+TEST_CASE("merge() Test", "[merge_test]") {
+    auto s1 = two_circles(), s2 = two_circles();
+    s1.merge(s2);
+
+    // Make sure there's an appropriate number of child elements
+    auto child_map = s1.get_children();
+    REQUIRE(child_map["svg"].size() == 2);
+    REQUIRE(child_map["g"].size() == 2);
+    REQUIRE(child_map["circle"].size() == 4);
 }

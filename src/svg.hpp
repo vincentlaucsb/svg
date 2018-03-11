@@ -113,6 +113,7 @@ namespace SVG {
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Element(_attr) {};
+        void merge(SVG& right);
     protected:
         std::string tag() override { return "svg"; }
     };
@@ -396,4 +397,20 @@ namespace SVG {
             child->get_children(child_map); // Recursion
         }
     };
+
+    inline void SVG::merge(SVG& right) {
+        /** Merge two SVG documents together horizontally */
+
+        // Move left
+        auto left = std::make_unique<SVG>(SVG());
+        for (auto& child: this->children)
+            left->children.push_back(std::move(child));
+        left->set_bbox();
+        this->children.clear();
+        this->children.push_back(std::move(left));
+
+        // Move right
+        right.set_bbox();
+        this->children.push_back(std::make_unique<SVG>(std::move(right)));
+    }
 }
