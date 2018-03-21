@@ -130,7 +130,7 @@ namespace SVG {
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
-        void merge(SVG& right);
+        void merge(SVG& right, double margin=10.0);
     protected:
         std::string tag() override { return "svg"; }
     };
@@ -415,8 +415,8 @@ namespace SVG {
         }
     };
 
-    inline void SVG::merge(SVG& right) {
-        /** Merge two SVG documents together horizontally */
+    inline void SVG::merge(SVG& right, double margin) {
+        /** Merge two SVG documents together horizontally with a uniform margin */
 
         // Move left
         auto left = std::make_unique<SVG>(SVG());
@@ -435,9 +435,14 @@ namespace SVG {
         // Set x position for child SVG elements, and compute width/height for this
         double x = 0, height = 0;
         for (auto& svg_child: this->get_immediate_children("svg")) {
-            svg_child->set_attr("x", x).set_attr("y", 0);
+            x += margin; // Margin left
+            svg_child->set_attr("x", x).set_attr("y", margin);
             x += ((SVG*)svg_child)->width();
-            height = std::max(height, ((SVG*)svg_child)->height());
+
+            // Account for margin top & bottom
+            height = std::max(height, ((SVG*)svg_child)->height()) + 2 * margin;
+
+            x += margin; // Margin right
         }
 
         this->set_attr("width", x).set_attr("height", height);
