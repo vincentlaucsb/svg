@@ -137,7 +137,6 @@ namespace SVG {
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
         void merge(SVG& right, double margin=10.0);
-
     protected:
         std::string tag() override { return "svg"; }
     };

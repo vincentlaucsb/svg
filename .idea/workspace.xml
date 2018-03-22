@@ -12,9 +12,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e6d49298-e8bb-4abe-a9d4-48ce716c9c9d" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change beforePath="$PROJECT_DIR$/src/svg.hpp" afterPath="$PROJECT_DIR$/src/svg.hpp" />
-      <change beforePath="$PROJECT_DIR$/tests/svg_tests.cpp" afterPath="$PROJECT_DIR$/tests/svg_tests.cpp" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -27,11 +25,11 @@
   <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="450">
-      <file leaf-file-name="svg.hpp" pinned="false" current-in-tab="false">
+      <file leaf-file-name="svg.hpp" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/svg.hpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-796">
-              <caret line="383" column="60" lean-forward="false" selection-start-line="383" selection-start-column="60" selection-end-line="383" selection-end-column="60" />
+            <state relative-caret-position="168">
+              <caret line="23" column="13" lean-forward="false" selection-start-line="23" selection-start-column="11" selection-end-line="23" selection-end-column="13" />
               <folding>
                 <element signature="e#141#160#0" expanded="true" />
               </folding>
@@ -39,7 +37,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="svg_tests.cpp" pinned="false" current-in-tab="true">
+      <file leaf-file-name="svg_tests.cpp" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="401">
@@ -73,7 +71,6 @@
       <find>double_to_fl</find>
       <find>class Circle</find>
       <find>return this-&gt;to_string</find>
-      <find>&lt;&lt;</find>
       <find>operator&lt;&lt;</find>
       <find>add_child</find>
       <find>class SVG</find>
@@ -87,6 +84,7 @@
       <find>set_bbox</find>
       <find>to_string</find>
       <find>style</find>
+      <find>&lt;&lt;</find>
     </findStrings>
     <replaceStrings>
       <replace>double</replace>
@@ -102,8 +100,8 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/CMakeLists.txt" />
-        <option value="$PROJECT_DIR$/src/svg.hpp" />
         <option value="$PROJECT_DIR$/tests/svg_tests.cpp" />
+        <option value="$PROJECT_DIR$/src/svg.hpp" />
       </list>
     </option>
   </component>
@@ -212,7 +210,7 @@
       <workItem from="1520747278339" duration="2056000" />
       <workItem from="1520792344842" duration="4711000" />
       <workItem from="1520905243289" duration="20000" />
-      <workItem from="1521674315630" duration="2794000" />
+      <workItem from="1521674315630" duration="2863000" />
     </task>
     <servers />
   </component>
@@ -249,7 +247,7 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="19599000" />
+    <option name="totallyTimeSpent" value="19668000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-11" y="-11" width="1942" height="1042" extended-state="6" />
@@ -623,21 +621,21 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/svg.hpp">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-796">
-          <caret line="383" column="60" lean-forward="false" selection-start-line="383" selection-start-column="60" selection-end-line="383" selection-end-column="60" />
-          <folding>
-            <element signature="e#141#160#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/tests/svg_tests.cpp">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="401">
           <caret line="127" column="1" lean-forward="true" selection-start-line="127" selection-start-column="1" selection-end-line="127" selection-end-column="1" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/svg.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="23" column="13" lean-forward="false" selection-start-line="23" selection-start-column="11" selection-end-line="23" selection-end-column="13" />
+          <folding>
+            <element signature="e#141#160#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
