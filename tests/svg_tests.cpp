@@ -34,6 +34,28 @@ TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
     REQUIRE(root.to_string() == correct);
 }
 
+TEST_CASE("CSS Styling", "[test_css]") {
+    SVG::SVG root = two_circles();
+    auto style = root.add_child<SVG::Style>();
+    style->css["circle"].set_attr("fill", "#000000").set_attr("stroke", "#000000");
+    std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
+        "\t<g>\n"
+        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
+        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
+        "\t</g>\n"
+        "\t<style type=\"text/css\">\n"
+        "\t\t<![CDATA[\n"
+        "\t\t\tcircle {\n"
+        "\t\t\t\tfill: #000000;\n"
+        "\t\t\t\tstroke: #000000;\n"
+        "\t\t\t}\n"
+        "\t\t]]>\n"
+        "\t</style>\n"
+        "</svg>";
+
+    REQUIRE(root.to_string() == correct);
+}
+
 TEST_CASE("One Decimal Place", "[decimal_place_test]") {
     SVG::SVG root;
     root.add_child<SVG::Line>(0.0, 0.0, PI, PI);

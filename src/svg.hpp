@@ -16,7 +16,49 @@
 #include <type_traits> // is_base_of
 
 namespace SVG {
-    class Element {
+    inline std::string double_to_string(const double& value);
+
+    inline std::string double_to_string(const double& value) {
+        /** Trim off all but one decimal place when converting a double to string */
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1);
+        ss << value;
+        return ss.str();
+    }
+
+    /** Base class for anything that has attributes */
+    class AttributeMap {
+    public:
+        AttributeMap() = default;
+        AttributeMap(std::map < std::string, std::string > _attr) : attr(_attr) {};
+        std::map<std::string, std::string> attr;
+
+        template<typename T>
+        AttributeMap& set_attr(const std::string key, T value) {
+            this->attr[key] = std::to_string(value);
+            return *this;
+        }
+    };
+
+    template<>
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
+        this->attr[key] = double_to_string(value);
+        return *this;
+    }
+
+    template<>
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
+        this->attr[key] = value;
+        return *this;
+    }
+
+    template<>
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
+        this->attr[key] = value;
+        return *this;
+    }
+
+    class Element: public AttributeMap {
     public:
         struct BoundingBox {
             double x1;
@@ -28,14 +70,7 @@ namespace SVG {
         using ChildList = std::vector<Element*>;
         using ChildMap = std::map<std::string, ChildList>;
 
-        Element() = default;
-        Element(std::map < std::string, std::string > _attr) : attr(_attr) {};
-
-        template<typename T>
-        Element& set_attr(const std::string key, T value) {
-            this->attr[key] = std::to_string(value);
-            return *this;
-        }
+        using AttributeMap::AttributeMap;
 
         template<typename T, typename... Args>
         T* add_child(Args&&... args) {
@@ -57,43 +92,14 @@ namespace SVG {
         virtual BoundingBox get_bbox();
         ChildList get_immediate_children(const std::string tag="");
         ChildMap get_children();
-        std::map < std::string, std::string > attr;
 
     protected:
         std::vector<std::unique_ptr<Element>> children;
-
-        static std::string double_to_string(const double& value);
         void get_bbox(Element::BoundingBox&);
         void get_children(ChildMap&);
         virtual std::string to_string(const size_t indent_level);
         virtual std::string tag() = 0;
     };
-
-    inline std::string Element::double_to_string(const double& value) {
-        /** Trim off all but one decimal place when converting a double to string */
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(1);
-        ss << value;
-        return ss.str();
-    }
-
-    template<>
-    inline Element& Element::set_attr(const std::string key, const double value) {
-        this->attr[key] = Element::double_to_string(value);
-        return *this;
-    }
-
-    template<>
-    inline Element& Element::set_attr(const std::string key, const char * value) {
-        this->attr[key] = value;
-        return *this;
-    }
-
-    template<>
-    inline Element& Element::set_attr(const std::string key, const std::string value) {
-        this->attr[key] = value;
-        return *this;
-    }
 
     inline Element::ChildList Element::get_immediate_children(const std::string tag) {
         /** Return immediate children that have a given tag (or return all otherwise) */
@@ -130,9 +136,26 @@ namespace SVG {
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
-        void merge(SVG& right);
+        void merge(SVG& right, double margin=10.0);
+
     protected:
         std::string tag() override { return "svg"; }
+    };
+
+    class Style : public Element {
+    public:
+        explicit Style(std::map<std::string, std::map<std::string, std::string>> attr) {
+            for (auto& map: attr)
+                this->css[map.first] = AttributeMap(map.second);
+        };
+
+        using Element::Element;
+
+        std::map<std::string, AttributeMap> css;
+        std::string to_string(const size_t) override;
+
+    protected:
+        std::string tag() override { return "style"; };
     };
 
     class Path : public Shape {
@@ -342,7 +365,7 @@ namespace SVG {
         // Set attributes
         for (auto& pair: attr)
             ret += " " + pair.first + "=" + "\"" + pair.second + "\"";
-        
+
         if (!this->children.empty()) {
             ret += ">\n";
 
@@ -354,6 +377,24 @@ namespace SVG {
         }
 
         return ret += " />";
+    }
+
+    inline std::string Style::to_string(const size_t indent_level) {
+        auto indent = std::string(indent_level, '\t');
+        std::string ret = indent + "<style type=\"text/css\">\n" +
+            indent + "\t<![CDATA[\n";
+
+        // Begin CSS stylesheet
+        for (auto& selector: this->css) {
+            // Loop over each selector's attribute/value pairs
+            ret += indent + "\t\t" + selector.first + " {\n";
+            for (auto& attr: selector.second.attr)
+                ret += indent + "\t\t\t" + attr.first + ": " + attr.second + ";\n";
+            ret += indent + "\t\t" + "}\n";
+        }
+
+        ret += indent + "\t]]>\n";
+        return ret + indent + "</style>";
     }
 
     inline std::string Text::to_string(const size_t indent_level) {
@@ -390,7 +431,7 @@ namespace SVG {
 
     inline void Element::get_bbox(Element::BoundingBox& box) {
         /** Recursively compute a bounding box */
-        auto this_bbox = this->get_bbox();       
+        auto this_bbox = this->get_bbox();
         if (isnan(box.x1) || this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
         if (isnan(box.x2) || this_bbox.x2 > box.x2) box.x2 = this_bbox.x2;
         if (isnan(box.y1) || this_bbox.y1 < box.y1) box.y1 = this_bbox.y1;
@@ -415,8 +456,8 @@ namespace SVG {
         }
     };
 
-    inline void SVG::merge(SVG& right) {
-        /** Merge two SVG documents together horizontally */
+    inline void SVG::merge(SVG& right, double margin) {
+        /** Merge two SVG documents together horizontally with a uniform margin */
 
         // Move left
         auto left = std::make_unique<SVG>(SVG());
@@ -435,9 +476,14 @@ namespace SVG {
         // Set x position for child SVG elements, and compute width/height for this
         double x = 0, height = 0;
         for (auto& svg_child: this->get_immediate_children("svg")) {
-            svg_child->set_attr("x", x).set_attr("y", 0);
+            x += margin; // Margin left
+            svg_child->set_attr("x", x).set_attr("y", margin);
             x += ((SVG*)svg_child)->width();
-            height = std::max(height, ((SVG*)svg_child)->height());
+
+            // Account for margin top & bottom
+            height = std::max(height, ((SVG*)svg_child)->height()) + 2 * margin;
+
+            x += margin; // Margin right
         }
 
         this->set_attr("width", x).set_attr("height", height);
