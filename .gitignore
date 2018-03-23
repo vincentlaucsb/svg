@@ -1,5 +1,6 @@
-# CMake
+# CMake/IDE
 cmake-build-debug/
+.vs/
 
 # Compiled Object files
 *.slo

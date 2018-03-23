@@ -16,6 +16,7 @@
 #include <type_traits> // is_base_of
 
 namespace SVG {
+    using SVGAttrib = std::map<std::string, std::string>;
     inline std::string double_to_string(const double& value);
 
     inline std::string double_to_string(const double& value) {
@@ -40,8 +41,8 @@ namespace SVG {
     class AttributeMap {
     public:
         AttributeMap() = default;
-        AttributeMap(std::map < std::string, std::string > _attr) : attr(_attr) {};
-        std::map<std::string, std::string> attr;
+        AttributeMap(SVGAttrib _attr) : attr(_attr) {};
+        SVGAttrib attr;
 
         template<typename T>
         AttributeMap& set_attr(const std::string key, T value) {
@@ -75,6 +76,8 @@ namespace SVG {
         using ChildMap = std::map<std::string, ChildList>;
 
         Element() = default;
+        Element(const std::string& id) : AttributeMap(
+            SVGAttrib({ { "id", id } })) {};
         using AttributeMap::AttributeMap;
 
         template<typename T, typename... Args>
@@ -92,6 +95,8 @@ namespace SVG {
             return *this;
         }
 
+        Element* get_element_by_id(const std::string& id);
+        std::vector<Element*> get_elements_by_class(const std::string& clsname);
         std::string to_string() { return this->to_string(0); };
         void autoscale(const QuadCoord& margins=DEFAULT_MARGINS);
         virtual BoundingBox get_bbox();
@@ -105,6 +110,39 @@ namespace SVG {
         virtual std::string to_string(const size_t indent_level);
         virtual std::string tag() = 0;
     };
+
+    inline Element* Element::get_element_by_id(const std::string &id) {
+        /** Return the SVG element that has a certain id */
+        std::deque<Element*> child_elems;
+        for (auto& child : this->children) child_elems.push_back(child.get());
+
+        while (!child_elems.empty()) {
+            auto& current = child_elems.front();
+            if (current->attr.find("id")->second == id)
+                return current;
+
+            for (auto& child : current->children) child_elems.push_back(child.get());
+                child_elems.pop_front();
+        }
+        
+        return nullptr;
+    }
+
+    inline std::vector<Element*> Element::get_elements_by_class(const std::string &clsname) {
+        /** Return all SVG elements with a certain class name */
+        std::vector<Element*> ret;
+        std::deque<Element*> child_elems;
+        for (auto& child : this->children) child_elems.push_back(child.get());
+    
+        while (!child_elems.empty()) {
+            auto& current = child_elems.front();
+            if (current->attr.find("class")->second == clsname) ret.push_back(current);
+            for (auto& child : current->children) child_elems.push_back(child.get());
+            child_elems.pop_front();
+        }
+    
+        return ret;
+    }
 
     inline Element::ChildList Element::get_immediate_children(const std::string tag) {
         /** Return immediate children that have a given tag (or return all otherwise) */

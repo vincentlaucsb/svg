@@ -93,7 +93,7 @@ TEST_CASE("autoscale() Test - Nested", "[test_autoscale_nested]") {
     // Lines shouldn't afect bounding box calculations because they're in between circles
     auto l1_ptr = line_container->add_child<SVG::Line>(0, 10, 0, 10),
       l2_ptr = line_container->add_child<SVG::Line>(0, 0, 0, 10);
-    root.autoscale();
+    root.autoscale(SVG::NO_MARGINS);
     
     // Make sure intermediate get_bbox() calls are correct
     REQUIRE(c1_ptr->get_bbox().x1 == -200);
@@ -123,6 +123,6 @@ TEST_CASE("merge() Test", "[merge_test]") {
     REQUIRE(child_map["circle"].size() == 4);
 
     // Make sure this SVG has correct width/height
-    REQUIRE(s1.width() == 800.0);
-    REQUIRE(s1.height() == 400.0);
+    REQUIRE(s1.width() == 840.0); // 800 + 40 for margins
+    REQUIRE(s1.height() == 420.0); // 400 + 20 for margins
 }
