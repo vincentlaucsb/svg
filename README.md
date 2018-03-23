@@ -11,12 +11,11 @@ int main() {
     SVG::SVG root;
     
     // Basic CSS support
-    auto style = root.add_child<SVG::Style>();
-    style->css["circle"].set_attr("fill", "#000000")
+    root.style("circle").set_attr("fill", "#000000")
         .set_attr("stroke", "#000000");
     
     auto shapes = root.add_child<SVG::Group>();
-    (*shapes) << SVG::Circle(-100, -100, 100) << SVG::Circle(100, 100, 100);
+    *shapes << SVG::Circle(-100, -100, 100) << SVG::Circle(100, 100, 100);
     
     // Automatically scale width and height to fit elements
     root.autoscale();
