@@ -34,8 +34,9 @@ namespace SVG {
         double y2;
     };
 
-    const static QuadCoord DEFAULT_MARGINS = { 10, 10, 10, 10 };
-    const static QuadCoord NO_MARGINS = { 0, 0, 0, 0 };
+    using Margins = QuadCoord;
+    const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
+    const static Margins NO_MARGINS = { 0, 0, 0, 0 };
 
     /** Base class for anything that has attributes */
     class AttributeMap {
@@ -76,7 +77,7 @@ namespace SVG {
         using ChildMap = std::map<std::string, ChildList>;
 
         Element() = default;
-        Element(const std::string& id) : AttributeMap(
+        Element(const char* id) : AttributeMap(
             SVGAttrib({ { "id", id } })) {};
         using AttributeMap::AttributeMap;
 
@@ -98,7 +99,7 @@ namespace SVG {
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
         std::string to_string() { return this->to_string(0); };
-        void autoscale(const QuadCoord& margins=DEFAULT_MARGINS);
+        void autoscale(const Margins& margins=DEFAULT_MARGINS);
         virtual BoundingBox get_bbox();
         ChildList get_immediate_children(const std::string tag="");
         ChildMap get_children();
@@ -136,7 +137,9 @@ namespace SVG {
     
         while (!child_elems.empty()) {
             auto& current = child_elems.front();
-            if (current->attr.find("class")->second == clsname) ret.push_back(current);
+            if ((current->attr.find("class") != current->attr.end())
+                && (current->attr.find("class")->second == clsname))
+                ret.push_back(current);
             for (auto& child : current->children) child_elems.push_back(child.get());
             child_elems.pop_front();
         }
@@ -176,7 +179,6 @@ namespace SVG {
 
     class Style : public Element {
     public:
-        Style() = default;
         using Element::Element;
         std::string to_string(const size_t) override;
         std::map<std::string, AttributeMap> css;
@@ -190,7 +192,7 @@ namespace SVG {
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
-        void merge(SVG& right, const QuadCoord& margins=DEFAULT_MARGINS);
+        void merge(SVG& right, const Margins& margins=DEFAULT_MARGINS);
         AttributeMap& style(const std::string& key);
         Style* css = nullptr;
 
@@ -200,6 +202,8 @@ namespace SVG {
 
     class Path : public Shape {
     public:
+        using Shape::Shape;
+
         template<typename T>
         inline void start(T x, T y) {
             /** Start line at (x, y)
@@ -243,6 +247,7 @@ namespace SVG {
 
     class Text : public Element {
     public:
+        using Element::Element;
         Text(double x, double y, std::string _content) {
             set_attr("x", double_to_string(x));
             set_attr("y", double_to_string(y));
@@ -260,13 +265,15 @@ namespace SVG {
     };
 
     class Group : public Element {
+    public:
+        using Element::Element;
     protected:
         std::string tag() override { return "g"; }
     };
 
     class Line : public Shape {
     public:
-        Line() = default;
+        using Shape::Shape;
         Line(double x1, double x2, double y1, double y2) : Shape({
                 { "x1", double_to_string(x1) },
                 { "x2", double_to_string(x2) },
@@ -293,7 +300,7 @@ namespace SVG {
 
     class Rect : public Shape {
     public:
-        Rect() = default;
+        using Shape::Shape;
         Rect(
             double x, double y, double width, double height) :
             Shape({
@@ -310,7 +317,7 @@ namespace SVG {
 
     class Circle : public Element {
     public:
-        Circle() = default;
+        using Element::Element;
         Circle(double cx, double cy, double radius) :
                 Element({
                         { "cx", double_to_string(cx) },
@@ -398,7 +405,7 @@ namespace SVG {
         return std::make_pair(x_pos, y_pos);
     }
 
-    AttributeMap& SVG::style(const std::string& key) {
+    inline AttributeMap& SVG::style(const std::string& key) {
         if (!this->css) this->css = this->add_child<Style>();
         return this->css->css[key];
     }
@@ -450,7 +457,7 @@ namespace SVG {
         return ret += ">" + this->content + "</text>";
     }
 
-    inline void Element::autoscale(const QuadCoord& margins) {
+    inline void Element::autoscale(const Margins& margins) {
         /** Modify this element's attributes so it can hold all of its child elements */
         using std::stof;
 
@@ -458,7 +465,7 @@ namespace SVG {
         this->get_bbox(bbox); // Compute the bounding box (recursive)
         double width = abs(bbox.x1) + abs(bbox.x2) + margins.x1 + margins.x2,
             height = abs(bbox.y1) + abs(bbox.y2) + margins.y1 + margins.y2,
-            x1 = bbox.x1 + margins.x1, y1 = bbox.y1 + margins.y1;
+            x1 = bbox.x1 - margins.x1, y1 = bbox.y1 - margins.y1;
 
         this->set_attr("width", width)
              .set_attr("height", height);
@@ -501,7 +508,7 @@ namespace SVG {
         }
     };
 
-    inline void SVG::merge(SVG& right, const QuadCoord& margins) {
+    inline void SVG::merge(SVG& right, const Margins& margins) {
         /** Merge two SVG documents together horizontally with a uniform margin */
 
         // Move left
