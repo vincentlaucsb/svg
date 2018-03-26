@@ -5,7 +5,6 @@
 #include <algorithm> // min, max
 #include <fstream>   // ofstream
 #include <math.h>    // NAN
-#include <unordered_map>
 #include <map>
 #include <deque>
 #include <vector>
@@ -14,18 +13,10 @@
 #include <iomanip> // setprecision
 #include <memory>
 #include <type_traits> // is_base_of
+#include <typeinfo>
 
 namespace SVG {
-    using SVGAttrib = std::map<std::string, std::string>;
-    inline std::string double_to_string(const double& value);
-
-    inline std::string double_to_string(const double& value) {
-        /** Trim off all but one decimal place when converting a double to string */
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(1);
-        ss << value;
-        return ss.str();
-    }
+    using Point = std::pair<double, double>;
 
     struct QuadCoord {
         double x1;
@@ -37,6 +28,73 @@ namespace SVG {
     using Margins = QuadCoord;
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
+
+    namespace util {
+        /** Various utility and mathematical functions */
+        enum Orientation {
+            COLINEAR, CLOCKWISE, COUNTERCLOCKWISE
+        };
+
+        inline Orientation orientation(Point& p1, Point& p2, Point& p3) {
+            double value = ((p2.second - p1.second) * (p3.first - p2.first) -
+                (p2.first - p1.first) * (p3.second - p2.second));
+            
+            if (value == 0) return COLINEAR;
+            else if (value > 0) return CLOCKWISE;
+            else return COUNTERCLOCKWISE;
+        }
+
+        inline std::vector<Point> convex_hull(std::vector<Point>& points) {
+            /** Compute the convex hull of a set of points via Jarvis'
+             *  gift wrapping algorithm
+             *
+             *  Ref: https://www.geeksforgeeks.org/convex-hull-set-1-jarviss-algorithm-or-wrapping/
+             */
+
+            if (points.size() < 3) return {}; // Need at least three points
+            std::vector<Point> hull;
+
+            // Find leftmost point (ties don't matter)
+            int left = 0;
+            for (size_t i = 0; i < points.size(); i++)
+                if (points[i].first < points[left].first) left = (int)i;
+            
+            // While we don't reach leftmost point
+            int current = left, next;
+            do {
+                // Add to convex hull
+                hull.push_back(points[current]);
+
+                // Keep moving counterclockwise
+                next = (current + 1) % points.size();
+                for (size_t i = 0; i < points.size(); i++) {
+                    // We've found a more counterclockwise point --> update next
+                    if (orientation(points[current], points[next], points[i]) == COUNTERCLOCKWISE)
+                        next = (int)i;
+                }
+
+                current = next;
+            } while (current != left);
+
+            return hull;
+        }
+    }
+
+    using SVGAttrib = std::map<std::string, std::string>;
+    inline std::string double_to_string(const double& value);
+    inline std::string point_to_string(const Point& point);
+
+    inline std::string double_to_string(const double& value) {
+        /** Trim off all but one decimal place when converting a double to string */
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1);
+        ss << value;
+        return ss.str();
+    }
+
+    inline std::string point_to_string(const Point& point) {
+        return double_to_string(point.first) + ", " + double_to_string(point.second);
+    }
 
     /** Base class for anything that has attributes */
     class AttributeMap {
@@ -96,6 +154,17 @@ namespace SVG {
             return *this;
         }
 
+        template<typename T>
+        std::vector<T*> get_children() {
+            std::vector<T*> ret;
+            auto child_elems = this->get_children_helper();
+            
+            for (auto& child: child_elems)
+                if (typeid(*child) == typeid(T)) ret.push_back((T*)child);
+
+            return ret;
+        }
+
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
         std::string to_string() { return this->to_string(0); };
@@ -106,25 +175,24 @@ namespace SVG {
 
     protected:
         std::vector<std::unique_ptr<Element>> children;
+        std::vector<Element*> get_children_helper();
         void get_bbox(Element::BoundingBox&);
-        void get_children(ChildMap&);
         virtual std::string to_string(const size_t indent_level);
         virtual std::string tag() = 0;
+
+        double find_numeric(const std::string& key) {
+            /** Return a numeric value or NAN */
+            if (attr.find(key) != attr.end())
+                return std::stof(attr[key]);
+            return NAN;
+        }
     };
 
     inline Element* Element::get_element_by_id(const std::string &id) {
         /** Return the SVG element that has a certain id */
-        std::deque<Element*> child_elems;
-        for (auto& child : this->children) child_elems.push_back(child.get());
-
-        while (!child_elems.empty()) {
-            auto& current = child_elems.front();
-            if (current->attr.find("id")->second == id)
-                return current;
-
-            for (auto& child : current->children) child_elems.push_back(child.get());
-                child_elems.pop_front();
-        }
+        auto child_elems = this->get_children_helper();
+        for (auto& current: child_elems)
+            if (current->attr.find("id")->second == id) return current;
         
         return nullptr;
     }
@@ -132,16 +200,12 @@ namespace SVG {
     inline std::vector<Element*> Element::get_elements_by_class(const std::string &clsname) {
         /** Return all SVG elements with a certain class name */
         std::vector<Element*> ret;
-        std::deque<Element*> child_elems;
-        for (auto& child : this->children) child_elems.push_back(child.get());
+        auto child_elems = this->get_children_helper();
     
-        while (!child_elems.empty()) {
-            auto& current = child_elems.front();
+        for (auto& current: child_elems) {
             if ((current->attr.find("class") != current->attr.end())
                 && (current->attr.find("class")->second == clsname))
                 ret.push_back(current);
-            for (auto& child : current->children) child_elems.push_back(child.get());
-            child_elems.pop_front();
         }
     
         return ret;
@@ -164,18 +228,25 @@ namespace SVG {
         /** Abstract base class for any SVG elements that have a width and height */
     public:
         using Element::Element;
-        virtual double width() {
-            if (attr.find("width") != attr.end())
-                return std::stof(attr["width"]);
-            return NAN;
+
+        virtual std::vector<Point> points() {
+            /** Return a set of points used for calculating a bounding polygon for this object */
+            auto bbox = this->get_bbox();
+            return {
+                Point(bbox.x1, bbox.y1), // Top left
+                Point(bbox.x2, bbox.y1), // Top right
+                Point(bbox.x1, bbox.y2), // Bottom left
+                Point(bbox.x2, bbox.y2)  // Bottom right
+            };
         }
 
-        virtual double height() {
-            if (attr.find("height") != attr.end())
-                return std::stof(attr["height"]);
-            return NAN;
-        }
+        virtual double x() { return this->find_numeric("x"); }
+        virtual double y() { return this->find_numeric("y"); }
+        virtual double width() { return this->find_numeric("width"); }
+        virtual double height() { return this->find_numeric("height"); }
     };
+
+    std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
 
     class Style : public Element {
     public:
@@ -286,10 +357,10 @@ namespace SVG {
         double y1() { return std::stof(this->attr["y1"]); }
         double y2() { return std::stof(this->attr["y2"]); }
 
-        double width() override;
-        double height() override;
-        double get_length();
-        double get_slope();
+        double width() override { return std::abs(x2() - x1()); }
+        double height() override { return std::abs(y2() - y1()); }
+        double get_length() { return std::sqrt(pow(width(), 2) + pow(height(), 2)); }
+        double get_slope() { return (y2() - y1()) / (x2() - x1()); }
 
         std::pair<double, double> along(double percent);
 
@@ -315,11 +386,11 @@ namespace SVG {
         std::string tag() override { return "rect"; }
     };
 
-    class Circle : public Element {
+    class Circle : public Shape {
     public:
-        using Element::Element;
+        using Shape::Shape;
         Circle(double cx, double cy, double radius) :
-                Element({
+                Shape({
                         { "cx", double_to_string(cx) },
                         { "cy", double_to_string(cy) },
                         { "r", double_to_string(radius) }
@@ -327,9 +398,30 @@ namespace SVG {
         };
 
         Circle(std::pair<double, double> xy, double radius) : Circle(xy.first, xy.second, radius) {};
+        double radius() { return this->find_numeric("r"); }
+        virtual double x() override { return this->find_numeric("cx"); }
+        virtual double y() override { return this->find_numeric("cy"); }
+        virtual double width() override { return this->radius() * 2; }
+        virtual double height() override { return this->width(); }
         Element::BoundingBox get_bbox() override;
+
     protected:
         std::string tag() override { return "circle"; }
+    };
+
+    class Polygon : public Element {
+    public:
+        using Element::Element;
+        Polygon(const std::vector<Point>& points) {
+            // Quick and dirty
+            std::string& point_str = this->attr["points"];
+            for (auto& pt : points) {
+                point_str += point_to_string(pt) + " ";
+            }
+        };
+
+    protected:
+        std::string tag() override { return "polygon"; }
     };
 
     inline Element::BoundingBox Line::get_bbox() {
@@ -337,17 +429,13 @@ namespace SVG {
     }
 
     inline Element::BoundingBox Rect::get_bbox() {
-        using std::stof;
-        double x = stof(this->attr["x"]), y = stof(this->attr["y"]),
-            width = stof(this->attr["width"]), height = stof(this->attr["height"]);
-
+        double x = this->x(), y = this->y(),
+            width = this->width(), height = this->height();
         return { x, x + width, y, y + height };
     }
 
     inline Element::BoundingBox Circle::get_bbox() {
-        using std::stof;
-        double x = stof(this->attr["cx"]), y = stof(this->attr["cy"]),
-                radius = stof(this->attr["r"]);
+        double x = this->x(), y = this->y(), radius = this->radius();
 
         return {
             x - radius,
@@ -355,22 +443,6 @@ namespace SVG {
             y - radius,
             y + radius
         };
-    }
-
-    inline double Line::get_slope() {
-        return (y2() - y1()) / (x2() - x1());
-    }
-
-    inline double Line::get_length() {
-        return std::sqrt(pow(width(), 2) + pow(height(), 2));
-    }
-
-    inline double Line::width() {
-        return std::abs(x2() - x1());
-    }
-
-    inline double Line::height() {
-        return std::abs(y2() - y1());
     }
 
     inline std::pair<double, double> Line::along(double percent) {
@@ -496,16 +568,24 @@ namespace SVG {
     inline Element::ChildMap Element::get_children() {
         /** Recursively compute all of the children of an SVG element */
         Element::ChildMap child_map;
-        this->get_children(child_map);
+        for (auto& child : this->get_children_helper())
+            child_map[child->tag()].push_back(child);
         return child_map;
     }
 
-    inline void Element::get_children(Element::ChildMap& child_map) {
-        // Helper function for get_children() which actually populates the map
-        for (auto& child: this->children) {
-            child_map[child->tag()].push_back(child.get());
-            child->get_children(child_map); // Recursion
+    inline std::vector<Element*> Element::get_children_helper() {
+        /** Helper function which populates a std::deque with all of an Element's children */
+        std::deque<Element*> temp;
+        std::vector<Element*> ret;
+
+        for (auto& child : this->children) { temp.push_back(child.get()); }
+        while (!temp.empty()) {
+            ret.push_back(temp.front());
+            for (auto& child : temp.front()->children) { temp.push_back(child.get()); }
+            temp.pop_front();
         }
+
+        return ret;
     };
 
     inline void SVG::merge(SVG& right, const Margins& margins) {
@@ -534,5 +614,17 @@ namespace SVG {
         }
 
         this->set_attr("width", x).set_attr("height", height);
+    }
+
+    inline std::vector<Point> bounding_polygon(std::vector<Shape*>& shapes) {
+        // Convert shapes into sets of points, aggregate them, and then calculate
+        // convex hull for aggregate set
+        std::vector<Point> points;
+        for (auto& shp : shapes) {
+            auto temp_points = shp->points();
+            std::move(temp_points.begin(), temp_points.end(), std::back_inserter(points));
+        }
+
+        return util::convex_hull(points);
     }
 }
