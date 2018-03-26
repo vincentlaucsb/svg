@@ -19,7 +19,7 @@ TEST_CASE("Proper Indentation", "[indent_test]") {
         "\t<circle />\n"
         "</svg>";
 
-    REQUIRE(root.to_string() == correct);
+    REQUIRE((std::string)root == correct);
 }
 
 TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
@@ -31,13 +31,12 @@ TEST_CASE("Proper Indentation - Nested", "[indent_nest_test]") {
         "\t</g>\n"
         "</svg>";
 
-    REQUIRE(root.to_string() == correct);
+    REQUIRE((std::string)root == correct);
 }
 
 TEST_CASE("CSS Styling", "[test_css]") {
     SVG::SVG root = two_circles();
-    auto style = root.add_child<SVG::Style>();
-    style->css["circle"].set_attr("fill", "#000000").set_attr("stroke", "#000000");
+    root.style("circle").set_attr("fill", "#000000").set_attr("stroke", "#000000");
     std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
         "\t<g>\n"
         "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
@@ -53,7 +52,7 @@ TEST_CASE("CSS Styling", "[test_css]") {
         "\t</style>\n"
         "</svg>";
 
-    REQUIRE(root.to_string() == correct);
+    REQUIRE(std::string(root) == correct);
 }
 
 TEST_CASE("One Decimal Place", "[decimal_place_test]") {
@@ -63,7 +62,7 @@ TEST_CASE("One Decimal Place", "[decimal_place_test]") {
         "\t<line x1=\"0.0\" x2=\"0.0\" y1=\"3.1\" y2=\"3.1\" />\n"
         "</svg>";
 
-    REQUIRE(root.to_string() == correct);
+    REQUIRE(std::string(root) == correct);
 }
 
 TEST_CASE("get_children() Test - Basic", "[test_get_children]") {
@@ -81,6 +80,17 @@ TEST_CASE("get_children() Test - Nested", "[test_get_children_nested]") {
     auto child_map = root.get_children();
     REQUIRE(child_map["g"].size() == 1);
     REQUIRE(child_map["circle"].size() == 2);
+}
+
+TEST_CASE("get_children() Test - Template", "[test_get_children_template]") {
+    SVG::SVG root = two_circles();
+    std::vector<SVG::SVG*> containers = root.get_children<SVG::SVG>();
+    std::vector<SVG::Group*> groups = root.get_children<SVG::Group>();
+    std::vector<SVG::Circle*> circles = root.get_children<SVG::Circle>();
+
+    REQUIRE(containers.size() == 0);
+    REQUIRE(groups.size() == 1);
+    REQUIRE(circles.size() == 2);
 }
 
 TEST_CASE("autoscale() Test - Nested", "[test_autoscale_nested]") {

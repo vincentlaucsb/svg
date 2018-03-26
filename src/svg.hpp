@@ -16,7 +16,11 @@
 #include <typeinfo>
 
 namespace SVG {
+    using SVGAttrib = std::map<std::string, std::string>;
     using Point = std::pair<double, double>;
+
+    inline std::string to_string(const double& value);
+    inline std::string to_string(const Point& point);
 
     struct QuadCoord {
         double x1;
@@ -78,13 +82,41 @@ namespace SVG {
 
             return hull;
         }
+
+        /** Base class for anything that has attributes */
+        class AttributeMap {
+        public:
+            AttributeMap() = default;
+            AttributeMap(SVGAttrib _attr) : attr(_attr) {};
+            SVGAttrib attr;
+
+            template<typename T>
+            AttributeMap& set_attr(const std::string key, T value) {
+                this->attr[key] = std::to_string(value);
+                return *this;
+            }
+        };
+
+        template<>
+        inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
+            this->attr[key] = to_string(value);
+            return *this;
+        }
+
+        template<>
+        inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
+            this->attr[key] = value;
+            return *this;
+        }
+
+        template<>
+        inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
+            this->attr[key] = value;
+            return *this;
+        }
     }
 
-    using SVGAttrib = std::map<std::string, std::string>;
-    inline std::string double_to_string(const double& value);
-    inline std::string point_to_string(const Point& point);
-
-    inline std::string double_to_string(const double& value) {
+    inline std::string to_string(const double& value) {
         /** Trim off all but one decimal place when converting a double to string */
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1);
@@ -92,43 +124,11 @@ namespace SVG {
         return ss.str();
     }
 
-    inline std::string point_to_string(const Point& point) {
-        return double_to_string(point.first) + ", " + double_to_string(point.second);
+    inline std::string to_string(const Point& point) {
+        return to_string(point.first) + "," + to_string(point.second);
     }
 
-    /** Base class for anything that has attributes */
-    class AttributeMap {
-    public:
-        AttributeMap() = default;
-        AttributeMap(SVGAttrib _attr) : attr(_attr) {};
-        SVGAttrib attr;
-
-        template<typename T>
-        AttributeMap& set_attr(const std::string key, T value) {
-            this->attr[key] = std::to_string(value);
-            return *this;
-        }
-    };
-
-    template<>
-    inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
-        this->attr[key] = double_to_string(value);
-        return *this;
-    }
-
-    template<>
-    inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
-        this->attr[key] = value;
-        return *this;
-    }
-
-    template<>
-    inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
-        this->attr[key] = value;
-        return *this;
-    }
-
-    class Element: public AttributeMap {
+    class Element: public util::AttributeMap {
     public:
         using BoundingBox = QuadCoord;
         using ChildList = std::vector<Element*>;
@@ -137,7 +137,10 @@ namespace SVG {
         Element() = default;
         Element(const char* id) : AttributeMap(
             SVGAttrib({ { "id", id } })) {};
-        using AttributeMap::AttributeMap;
+        using util::AttributeMap::AttributeMap;
+
+        // Implicit string conversion
+        operator std::string() { return this->svg_to_string(0); };
 
         template<typename T, typename... Args>
         T* add_child(Args&&... args) {
@@ -156,6 +159,7 @@ namespace SVG {
 
         template<typename T>
         std::vector<T*> get_children() {
+            SVG_TYPE_CHECK;
             std::vector<T*> ret;
             auto child_elems = this->get_children_helper();
             
@@ -167,7 +171,6 @@ namespace SVG {
 
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
-        std::string to_string() { return this->to_string(0); };
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
         virtual BoundingBox get_bbox();
         ChildList get_immediate_children(const std::string tag="");
@@ -177,7 +180,7 @@ namespace SVG {
         std::vector<std::unique_ptr<Element>> children;
         std::vector<Element*> get_children_helper();
         void get_bbox(Element::BoundingBox&);
-        virtual std::string to_string(const size_t indent_level);
+        virtual std::string svg_to_string(const size_t indent_level);
         virtual std::string tag() = 0;
 
         double find_numeric(const std::string& key) {
@@ -192,7 +195,8 @@ namespace SVG {
         /** Return the SVG element that has a certain id */
         auto child_elems = this->get_children_helper();
         for (auto& current: child_elems)
-            if (current->attr.find("id")->second == id) return current;
+            if (current->attr.find("id") != current->attr.end() && 
+                current->attr.find("id")->second == id) return current;
         
         return nullptr;
     }
@@ -250,11 +254,12 @@ namespace SVG {
 
     class Style : public Element {
     public:
+        Style() = default;
         using Element::Element;
-        std::string to_string(const size_t) override;
-        std::map<std::string, AttributeMap> css;
+        std::map<std::string, util::AttributeMap> css;
 
     protected:
+        std::string svg_to_string(const size_t) override;
         std::string tag() override { return "style"; };
     };
 
@@ -264,7 +269,7 @@ namespace SVG {
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
         void merge(SVG& right, const Margins& margins=DEFAULT_MARGINS);
-        AttributeMap& style(const std::string& key);
+        util::AttributeMap& style(const std::string& key);
         Style* css = nullptr;
 
     protected:
@@ -318,20 +323,21 @@ namespace SVG {
 
     class Text : public Element {
     public:
+        Text() = default;
         using Element::Element;
+
         Text(double x, double y, std::string _content) {
-            set_attr("x", double_to_string(x));
-            set_attr("y", double_to_string(y));
+            set_attr("x", to_string(x));
+            set_attr("y", to_string(y));
             content = _content;
         }
 
         Text(std::pair<double, double> xy, std::string _content) :
                 Text(xy.first, xy.second, _content) {};
 
-        std::string to_string(const size_t) override;
-
     protected:
         std::string content;
+        std::string svg_to_string(const size_t) override;
         std::string tag() override { return "text"; }
     };
 
@@ -344,12 +350,14 @@ namespace SVG {
 
     class Line : public Shape {
     public:
+        Line() = default;
         using Shape::Shape;
+
         Line(double x1, double x2, double y1, double y2) : Shape({
-                { "x1", double_to_string(x1) },
-                { "x2", double_to_string(x2) },
-                { "y1", double_to_string(y1) },
-                { "y2", double_to_string(y2) }
+                { "x1", to_string(x1) },
+                { "x2", to_string(x2) },
+                { "y1", to_string(y1) },
+                { "y2", to_string(y2) }
         }) {};
 
         double x1() { return std::stof(this->attr["x1"]); }
@@ -371,14 +379,16 @@ namespace SVG {
 
     class Rect : public Shape {
     public:
+        Rect() = default;
         using Shape::Shape;
+
         Rect(
             double x, double y, double width, double height) :
             Shape({
-                    { "x", double_to_string(x) },
-                    { "y", double_to_string(y) },
-                    { "width", double_to_string(width) },
-                    { "height", double_to_string(height) }
+                    { "x", to_string(x) },
+                    { "y", to_string(y) },
+                    { "width", to_string(width) },
+                    { "height", to_string(height) }
             }) {};
 
         Element::BoundingBox get_bbox() override;
@@ -388,12 +398,14 @@ namespace SVG {
 
     class Circle : public Shape {
     public:
+        Circle() = default;
         using Shape::Shape;
+
         Circle(double cx, double cy, double radius) :
                 Shape({
-                        { "cx", double_to_string(cx) },
-                        { "cy", double_to_string(cy) },
-                        { "r", double_to_string(radius) }
+                        { "cx", to_string(cx) },
+                        { "cy", to_string(cy) },
+                        { "r", to_string(radius) }
                 }) {
         };
 
@@ -411,13 +423,14 @@ namespace SVG {
 
     class Polygon : public Element {
     public:
+        Polygon() = default;
         using Element::Element;
+
         Polygon(const std::vector<Point>& points) {
             // Quick and dirty
             std::string& point_str = this->attr["points"];
-            for (auto& pt : points) {
-                point_str += point_to_string(pt) + " ";
-            }
+            for (auto& pt : points)
+                point_str += to_string(pt) + " ";
         };
 
     protected:
@@ -477,12 +490,12 @@ namespace SVG {
         return std::make_pair(x_pos, y_pos);
     }
 
-    inline AttributeMap& SVG::style(const std::string& key) {
+    inline util::AttributeMap& SVG::style(const std::string& key) {
         if (!this->css) this->css = this->add_child<Style>();
         return this->css->css[key];
     }
 
-    inline std::string Element::to_string(const size_t indent_level) {
+    inline std::string Element::svg_to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<" + tag();
 
@@ -495,7 +508,7 @@ namespace SVG {
 
             // Recursively get strings for child elements
             for (auto& child: children)
-                ret += child->to_string(indent_level + 1) + "\n";
+                ret += child->svg_to_string(indent_level + 1) + "\n";
 
             return ret += indent + "</" + tag() + ">";
         }
@@ -503,7 +516,7 @@ namespace SVG {
         return ret += " />";
     }
 
-    inline std::string Style::to_string(const size_t indent_level) {
+    inline std::string Style::svg_to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<style type=\"text/css\">\n" +
             indent + "\t<![CDATA[\n";
@@ -521,7 +534,7 @@ namespace SVG {
         return ret + indent + "</style>";
     }
 
-    inline std::string Text::to_string(const size_t indent_level) {
+    inline std::string Text::svg_to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<text";
         for (auto& pair: attr)
