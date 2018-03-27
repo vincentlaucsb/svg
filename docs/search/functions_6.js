@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['start',['start',['../class_s_v_g_1_1_path.html#a87ff020960198747bcd801795a0efe9d',1,'SVG::Path']]]
+  ['to_5forigin',['to_origin',['../class_s_v_g_1_1_path.html#ac8a16fb4c233cad891287e425940b97d',1,'SVG::Path']]]
 ];

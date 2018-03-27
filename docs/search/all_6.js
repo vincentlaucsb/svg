@@ -1,4 +1,6 @@
 var searchData=
 [
-  ['merge',['merge',['../class_s_v_g_1_1_s_v_g.html#ab94aa45709aedc3b475ed2a77917f82b',1,'SVG::SVG']]]
+  ['path',['Path',['../class_s_v_g_1_1_path.html',1,'SVG']]],
+  ['points',['points',['../class_s_v_g_1_1_shape.html#a6712b765fd83fb9760825dcc521ccaf0',1,'SVG::Shape']]],
+  ['polygon',['Polygon',['../class_s_v_g_1_1_polygon.html',1,'SVG']]]
 ];

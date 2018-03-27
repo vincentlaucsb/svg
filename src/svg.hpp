@@ -169,11 +169,20 @@ namespace SVG {
             return ret;
         }
 
+        template<typename T>
+        std::vector<T*> get_immediate_children() {
+            SVG_TYPE_CHECK;
+            std::vector<T*> ret;
+            for (auto& child : this->children)
+                if (typeid(*child) == typeid(T)) ret.push_back((T*)child.get());
+
+            return ret;
+        }
+
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
         virtual BoundingBox get_bbox();
-        ChildList get_immediate_children(const std::string tag="");
         ChildMap get_children();
 
     protected:
@@ -190,6 +199,13 @@ namespace SVG {
             return NAN;
         }
     };
+
+    template<>
+    inline Element::ChildList Element::get_immediate_children() {
+        Element::ChildList ret;
+        for (auto& child : this->children) ret.push_back(child.get());
+        return ret;
+    }
 
     inline Element* Element::get_element_by_id(const std::string &id) {
         /** Return the SVG element that has a certain id */
@@ -212,14 +228,6 @@ namespace SVG {
                 ret.push_back(current);
         }
     
-        return ret;
-    }
-
-    inline Element::ChildList Element::get_immediate_children(const std::string tag) {
-        /** Return immediate children that have a given tag (or return all otherwise) */
-        Element::ChildList ret;
-        for (auto& child: this->children)
-            if (tag.empty() || child->tag() == tag) ret.push_back(child.get());
         return ret;
     }
 
@@ -268,13 +276,14 @@ namespace SVG {
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
-        void merge(SVG& right, const Margins& margins=DEFAULT_MARGINS);
         util::AttributeMap& style(const std::string& key);
         Style* css = nullptr;
 
     protected:
         std::string tag() override { return "svg"; }
     };
+
+    SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
 
     class Path : public Shape {
     public:
@@ -601,37 +610,33 @@ namespace SVG {
         return ret;
     };
 
-    inline void SVG::merge(SVG& right, const Margins& margins) {
+    inline SVG merge(SVG& left, SVG& right, const Margins& margins) {
         /** Merge two SVG documents together horizontally with a uniform margin */
+        SVG ret;
 
-        // Move left
-        auto left = std::make_unique<SVG>(SVG());
-        for (auto& child: this->children)
-            left->children.push_back(std::move(child));
-        this->children.clear();
-        this->children.push_back(std::move(left));
-
-        // Move right
-        this->children.push_back(std::make_unique<SVG>(std::move(right)));
+        // Move items
+        ret << std::move(left) << std::move(right);
 
         // Set bounding box of individual pieces
-        for (auto& svg_child: this->get_immediate_children("svg"))
+        for (auto& svg_child: ret.get_immediate_children<SVG>())
             svg_child->autoscale(margins);
 
         // Set x position for child SVG elements, and compute width/height for this
         double x = 0, height = 0;
-        for (auto& svg_child: this->get_immediate_children("svg")) {
+        for (auto& svg_child: ret.get_immediate_children<SVG>()) {
             svg_child->set_attr("x", x).set_attr("y", 0);
-            x += ((SVG*)svg_child)->width();
-            height = std::max(height, ((SVG*)svg_child)->height());
+            x += svg_child->width();
+            height = std::max(height, svg_child->height());
         }
 
-        this->set_attr("width", x).set_attr("height", height);
+        ret.set_attr("width", x).set_attr("height", height);
+        return ret;
     }
 
     inline std::vector<Point> bounding_polygon(std::vector<Shape*>& shapes) {
-        // Convert shapes into sets of points, aggregate them, and then calculate
-        // convex hull for aggregate set
+        /* Convert shapes into sets of points, aggregate them, and then calculate
+         * convex hull for aggregate set
+         */
         std::vector<Point> points;
         for (auto& shp : shapes) {
             auto temp_points = shp->points();
