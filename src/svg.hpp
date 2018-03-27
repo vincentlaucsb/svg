@@ -182,6 +182,7 @@ namespace SVG {
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
+        void autoscale(const double margin);
         virtual BoundingBox get_bbox();
         ChildMap get_children();
 
@@ -549,6 +550,19 @@ namespace SVG {
         for (auto& pair: attr)
             ret += " " + pair.first + "=" + "\"" + pair.second + "\"";
         return ret += ">" + this->content + "</text>";
+    }
+
+    inline void Element::autoscale(const double margin) {
+        /** Like other autoscale() but accepts margin as a percentage */
+        Element::BoundingBox bbox = this->get_bbox();
+        this->get_bbox(bbox);
+        double width = abs(bbox.x1) + abs(bbox.x2),
+            height = abs(bbox.y1) + abs(bbox.y2);
+
+        this->autoscale({
+            width * margin, width * margin,
+            height * margin, height * margin 
+        });
     }
 
     inline void Element::autoscale(const Margins& margins) {
