@@ -1,6 +1,7 @@
 #pragma once
 #define PI 3.14159265
 #define SVG_TYPE_CHECK static_assert(std::is_base_of<Element, T>::value, "Child must be an SVG element.")
+#define APPROX_EQUALS(x, y, tol) bool(abs(x - y) < tol)
 #include <iostream>
 #include <algorithm> // min, max
 #include <fstream>   // ofstream
@@ -38,6 +39,8 @@ namespace SVG {
         enum Orientation {
             COLINEAR, CLOCKWISE, COUNTERCLOCKWISE
         };
+
+        inline std::vector<Point> polar_points(int n, int a, int b, double radius);
 
         inline Orientation orientation(Point& p1, Point& p2, Point& p3) {
             double value = ((p2.second - p1.second) * (p3.first - p2.first) -
@@ -81,6 +84,24 @@ namespace SVG {
             } while (current != left);
 
             return hull;
+        }
+
+        inline std::vector<Point> polar_points(int n, int a, int b, double radius) {
+            /** Return n equidistant points (oriented counterclockwise) located on
+             *  the perimeter of a circle of radius r centered at (a, b)  
+             *
+             *  Note: Drawing an edge between each consecutive pair of points creates
+             *  a convex polygon
+             */
+            std::vector<Point> ret;
+            for (double degree = 0; degree < 360; degree += 360/n) {
+                ret.push_back(Point(
+                    a + radius * cos(degree * (PI/180)), // 1 degree = pi/180 radians
+                    b + radius * sin(degree * (PI/180))
+                ));
+            }
+
+            return ret;
         }
 
         /** Base class for anything that has attributes */
@@ -233,6 +254,9 @@ namespace SVG {
     public:
         using Element::Element;
 
+        // Implicit conversion to Point
+        operator Point() { return std::make_pair(this->x(), this->y()); }
+
         virtual std::vector<Point> points() {
             /** Return a set of points used for calculating a bounding polygon for this object */
             auto bbox = this->get_bbox();
@@ -359,6 +383,8 @@ namespace SVG {
                 { "y1", to_string(y1) },
                 { "y2", to_string(y2) }
         }) {};
+
+        Line(Point x, Point y) : Line(x.first, y.first, x.second, y.second) {};
 
         double x1() { return std::stof(this->attr["x1"]); }
         double x2() { return std::stof(this->attr["x2"]); }
