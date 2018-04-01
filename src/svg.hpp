@@ -20,8 +20,10 @@ namespace SVG {
     using SVGAttrib = std::map<std::string, std::string>;
     using Point = std::pair<double, double>;
 
+    class AttributeMap;
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
+    inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level=0);
 
     struct QuadCoord {
         double x1;
@@ -41,6 +43,32 @@ namespace SVG {
         };
 
         inline std::vector<Point> polar_points(int n, int a, int b, double radius);
+        
+        template<typename T>
+        inline T min_or_not_nan(T first, T second) {
+            /** Return the smallest number or the number that is not NAN
+             *  Returns NAN if both are NAN
+             */
+            if (isnan(first) && isnan(second))
+                return NAN;
+            else if (isnan(first) || isnan(second))
+                return isnan(first) ? second : first;
+            else
+                return std::min(first, second);
+        }
+
+        template<typename T>
+        inline T max_or_not_nan(T first, T second) {
+            /** Return the largest number or the number that is not NAN
+            *  Returns NAN if both are NAN
+            */
+            if (isnan(first) && isnan(second))
+                return NAN;
+            else if (isnan(first) || isnan(second))
+                return isnan(first) ? second : first;
+            else
+                return std::max(first, second);
+        }
 
         inline Orientation orientation(Point& p1, Point& p2, Point& p3) {
             double value = ((p2.second - p1.second) * (p3.first - p2.first) -
@@ -103,38 +131,6 @@ namespace SVG {
 
             return ret;
         }
-
-        /** Base class for anything that has attributes */
-        class AttributeMap {
-        public:
-            AttributeMap() = default;
-            AttributeMap(SVGAttrib _attr) : attr(_attr) {};
-            SVGAttrib attr;
-
-            template<typename T>
-            AttributeMap& set_attr(const std::string key, T value) {
-                this->attr[key] = std::to_string(value);
-                return *this;
-            }
-        };
-
-        template<>
-        inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
-            this->attr[key] = to_string(value);
-            return *this;
-        }
-
-        template<>
-        inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
-            this->attr[key] = value;
-            return *this;
-        }
-
-        template<>
-        inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
-            this->attr[key] = value;
-            return *this;
-        }
     }
 
     inline std::string to_string(const double& value) {
@@ -149,16 +145,66 @@ namespace SVG {
         return to_string(point.first) + "," + to_string(point.second);
     }
 
-    class Element: public util::AttributeMap {
+    /** Base class for anything that has attributes */
+    class AttributeMap {
     public:
-        using BoundingBox = QuadCoord;
+        AttributeMap() = default;
+        AttributeMap(SVGAttrib _attr) : attr(_attr) {};
+        SVGAttrib attr;
+
+        template<typename T>
+        AttributeMap& set_attr(const std::string key, T value) {
+            this->attr[key] = std::to_string(value);
+            return *this;
+        }
+    };
+
+    template<>
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
+        this->attr[key] = to_string(value);
+        return *this;
+    }
+
+    template<>
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
+        this->attr[key] = value;
+        return *this;
+    }
+
+    template<>
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
+        this->attr[key] = value;
+        return *this;
+    }
+
+    class Element: public AttributeMap {
+    public:
+        class BoundingBox : public QuadCoord {
+        public:
+            using QuadCoord::QuadCoord;
+            BoundingBox() = default;
+            BoundingBox(double a, double b, double c, double d) : QuadCoord({ a, b, c, d }) {};
+
+            BoundingBox operator+ (const BoundingBox& other) {
+                /** Return a new bounding box which envelopes both original boxes */
+                using namespace util;
+                BoundingBox new_box;
+                new_box.x1 = min_or_not_nan(this->x1, other.x1);
+                new_box.x2 = max_or_not_nan(this->x2, other.x2);
+                new_box.y1 = min_or_not_nan(this->y1, other.y1);
+                new_box.y2 = max_or_not_nan(this->y2, other.y2);
+                return new_box;
+            }
+        };
         using ChildList = std::vector<Element*>;
         using ChildMap = std::map<std::string, ChildList>;
 
         Element() = default;
+        Element(const Element& other) = delete; // No copy constructor
+        Element(Element&& other) = default; // Move constructor
         Element(const char* id) : AttributeMap(
             SVGAttrib({ { "id", id } })) {};
-        using util::AttributeMap::AttributeMap;
+        using AttributeMap::AttributeMap;
 
         // Implicit string conversion
         operator std::string() { return this->svg_to_string(0); };
@@ -289,7 +335,8 @@ namespace SVG {
     public:
         Style() = default;
         using Element::Element;
-        std::map<std::string, util::AttributeMap> css;
+        std::map<std::string, AttributeMap> css;
+        std::map<std::string, std::map<std::string, AttributeMap>> keyframes;
 
     protected:
         std::string svg_to_string(const size_t) override;
@@ -301,13 +348,23 @@ namespace SVG {
         SVG(std::map < std::string, std::string > _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {};
-        util::AttributeMap& style(const std::string& key);
+        AttributeMap& style(const std::string& key) {
+            if (!this->css) this->css = this->add_child<Style>();
+            return this->css->css[key];
+        }
+
+        std::map<std::string, AttributeMap>& keyframes(const std::string& key) {
+            if (!this->css) this->css = this->add_child<Style>();
+            return this->css->keyframes[key];
+        }
+
         Style* css = nullptr;
 
     protected:
         std::string tag() override { return "svg"; }
     };
 
+    SVG frame_animate(std::vector<SVG>& frames, const double fps);
     SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
 
     class Path : public Shape {
@@ -526,11 +583,6 @@ namespace SVG {
         return std::make_pair(x_pos, y_pos);
     }
 
-    inline util::AttributeMap& SVG::style(const std::string& key) {
-        if (!this->css) this->css = this->add_child<Style>();
-        return this->css->css[key];
-    }
-
     inline std::string Element::svg_to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<" + tag();
@@ -552,18 +604,34 @@ namespace SVG {
         return ret += " />";
     }
 
+
+
+    inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level) {
+        /** Print out a CSS attribute block */
+        auto indent = std::string(indent_level, '\t'), ret = std::string();
+        for (auto& selector : css) {
+            // Loop over each selector's attribute/value pairs
+            ret += indent + "\t\t" + selector.first + " {\n";
+            for (auto& attr : selector.second.attr)
+                ret += indent + "\t\t\t" + attr.first + ": " + attr.second + ";\n";
+            ret += indent + "\t\t" + "}\n";
+        }
+        return ret;
+    }
+
     inline std::string Style::svg_to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<style type=\"text/css\">\n" +
             indent + "\t<![CDATA[\n";
 
         // Begin CSS stylesheet
-        for (auto& selector: this->css) {
-            // Loop over each selector's attribute/value pairs
-            ret += indent + "\t\t" + selector.first + " {\n";
-            for (auto& attr: selector.second.attr)
-                ret += indent + "\t\t\t" + attr.first + ": " + attr.second + ";\n";
-            ret += indent + "\t\t" + "}\n";
+        ret += to_string(this->css, indent_level);
+
+        // Animation frames
+        for (auto& anim : this->keyframes) {
+            ret += indent + "\t\t@keyframes " + anim.first + " {\n" +
+                to_string(anim.second, indent_level + 1) +
+                indent + "\t\t" + "}\n";
         }
 
         ret += indent + "\t]]>\n";
@@ -618,13 +686,8 @@ namespace SVG {
     inline void Element::get_bbox(Element::BoundingBox& box) {
         /** Recursively compute a bounding box */
         auto this_bbox = this->get_bbox();
-        if (isnan(box.x1) || this_bbox.x1 < box.x1) box.x1 = this_bbox.x1;
-        if (isnan(box.x2) || this_bbox.x2 > box.x2) box.x2 = this_bbox.x2;
-        if (isnan(box.y1) || this_bbox.y1 < box.y1) box.y1 = this_bbox.y1;
-        if (isnan(box.y2) || this_bbox.y2 > box.y2) box.y2 = this_bbox.y2;
-
-        // Recursion
-        for (auto& child: this->children) child->get_bbox(box);
+        box = this_bbox + box; // Take union of both
+        for (auto& child: this->children) child->get_bbox(box); // Recursion
     }
 
     inline Element::ChildMap Element::get_children() {
@@ -684,5 +747,57 @@ namespace SVG {
         }
 
         return util::convex_hull(points);
+    }
+
+    inline SVG frame_animate(std::vector<SVG>& frames, const double fps) {
+        /** Given a container (e.g. std::vector) of SVGs, create
+         *  a frame-by-frame animation of them
+         */
+        SVG root;
+        const double duration = (double)frames.size() / fps; // [seconds]
+        const double frame_step = 1.0 / fps; // duration of each frame [seconds]
+        int current_frame = 0;
+
+        root.style("svg.animated").set_attr("animation-iteration-count", "infinite")
+            .set_attr("animation-timing-function", "step-end")
+            .set_attr("animation-duration", std::to_string(duration) + "s")
+            .set_attr("opacity", 0);
+
+        // Move frames into new SVG
+        for (auto& frame : frames) {
+            std::string frame_id = "frame_" + std::to_string(current_frame);
+            frame.set_attr("id", frame_id).set_attr("class", "animated");
+            root.style("#" + frame_id).set_attr("animation-name",
+                "anim_" + std::to_string(current_frame));
+            current_frame++;
+            root << std::move(frame);
+        }
+
+        // Set animation frames
+        for (size_t i = 0, ilen = frames.size(); i < ilen; i++) {
+            auto& anim = root.keyframes("anim_" + std::to_string(i));
+            double begin_pct = (double)i / frames.size(),
+                end_pct = (double)(i + 1) / frames.size();
+            anim["0%"].set_attr("opacity", 0);
+            anim[std::to_string(begin_pct * 100) + "%"].set_attr("opacity", 1);
+            anim[std::to_string(end_pct * 100) + "%"].set_attr("opacity", 0);
+        }
+
+        // Scale and center child SVGs
+        double width = 0, height = 0;
+
+        for (auto& child : root.get_immediate_children<SVG>()) {
+            child->autoscale();
+            width = std::max(width, child->width());
+            height = std::max(height, child->height());
+        }
+
+        root.set_attr("viewBox", "0 0 " + std::to_string(width) + " " + std::to_string(height));
+
+        // Center child SVGs
+        for (auto& child : root.get_immediate_children<SVG>())
+            child->set_attr("x", (width - child->width())/2).set_attr("y", (height - child->height())/2);
+
+        return root;
     }
 }

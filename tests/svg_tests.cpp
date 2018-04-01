@@ -124,17 +124,17 @@ TEST_CASE("autoscale() Test - Nested", "[test_autoscale_nested]") {
 
 TEST_CASE("merge() Test", "[merge_test]") {
     auto s1 = two_circles(200, 200, 200), s2 = two_circles(200, 200, 200);
-    s1.merge(s2);
+    auto merged = SVG::merge(s1, s2);
 
     // Make sure there's an appropriate number of child elements
-    auto child_map = s1.get_children();
+    auto child_map = merged.get_children();
     REQUIRE(child_map["svg"].size() == 2);
     REQUIRE(child_map["g"].size() == 2);
     REQUIRE(child_map["circle"].size() == 4);
 
     // Make sure this SVG has correct width/height
-    REQUIRE(s1.width() == 840.0); // 800 + 40 for margins
-    REQUIRE(s1.height() == 420.0); // 400 + 20 for margins
+    REQUIRE(merged.width() == 840.0); // 800 + 40 for margins
+    REQUIRE(merged.height() == 420.0); // 400 + 20 for margins
 }
 
 TEST_CASE("Implicit Point() Conversion", "point_conversion") {
