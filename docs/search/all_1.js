@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['circle',['Circle',['../class_s_v_g_1_1_circle.html',1,'SVG']]]
+  ['boundingbox',['BoundingBox',['../class_s_v_g_1_1_element_1_1_bounding_box.html',1,'SVG::Element']]]
 ];

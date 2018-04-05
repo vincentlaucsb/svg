@@ -58,11 +58,12 @@ $(function() {
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><b>SVG</b></li><li class="navelem"><a class="el" href="class_s_v_g_1_1_element.html">Element</a></li>  </ul>
+<li class="navelem"><a class="el" href="namespace_s_v_g.html">SVG</a></li><li class="navelem"><a class="el" href="class_s_v_g_1_1_element.html">Element</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
@@ -72,31 +73,24 @@ $(function() {
 <div class="title">SVG::Element Class Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="dynheader">
-Inheritance diagram for SVG::Element:</div>
-<div class="dyncontent">
- <div class="center">
-  <img src="class_s_v_g_1_1_element.png" usemap="#SVG::Element_map" alt=""/>
-  <map id="SVG::Element_map" name="SVG::Element_map">
-<area href="class_s_v_g_1_1util_1_1_attribute_map.html" alt="SVG::util::AttributeMap" shape="rect" coords="296,0,434,24"/>
-<area href="class_s_v_g_1_1_group.html" alt="SVG::Group" shape="rect" coords="0,112,138,136"/>
-<area href="class_s_v_g_1_1_polygon.html" alt="SVG::Polygon" shape="rect" coords="148,112,286,136"/>
-<area href="class_s_v_g_1_1_shape.html" alt="SVG::Shape" shape="rect" coords="296,112,434,136"/>
-<area href="class_s_v_g_1_1_style.html" alt="SVG::Style" shape="rect" coords="444,112,582,136"/>
-<area href="class_s_v_g_1_1_text.html" alt="SVG::Text" shape="rect" coords="592,112,730,136"/>
-<area href="class_s_v_g_1_1_circle.html" alt="SVG::Circle" shape="rect" coords="0,168,138,192"/>
-<area href="class_s_v_g_1_1_line.html" alt="SVG::Line" shape="rect" coords="148,168,286,192"/>
-<area href="class_s_v_g_1_1_path.html" alt="SVG::Path" shape="rect" coords="296,168,434,192"/>
-<area href="class_s_v_g_1_1_rect.html" alt="SVG::Rect" shape="rect" coords="444,168,582,192"/>
-<area href="class_s_v_g_1_1_s_v_g.html" alt="SVG::SVG" shape="rect" coords="592,168,730,192"/>
-</map>
- </div></div>
+
+<p>Abstract base class for all <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> elements.  
+ <a href="class_s_v_g_1_1_element.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="svg_8hpp_source.html">svg.hpp</a>&gt;</code></p>
+
+<p>Inherits <a class="el" href="class_s_v_g_1_1_attribute_map.html">SVG::AttributeMap</a>.</p>
+
+<p>Inherited by <a class="el" href="class_s_v_g_1_1_group.html">SVG::Group</a>, <a class="el" href="class_s_v_g_1_1_polygon.html">SVG::Polygon</a>, <a class="el" href="class_s_v_g_1_1_shape.html">SVG::Shape</a>, <a class="el" href="class_s_v_g_1_1_s_v_g_1_1_style.html">SVG::SVG::Style</a>, and <a class="el" href="class_s_v_g_1_1_text.html">SVG::Text</a>.</p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element_1_1_bounding_box.html">BoundingBox</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents the top left and bottom right corners of a bounding rectangle.  <a href="class_s_v_g_1_1_element_1_1_bounding_box.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:a91d3b388204869512bdf19041bb67d28"><td class="memItemLeft" align="right" valign="top"><a id="a91d3b388204869512bdf19041bb67d28"></a>
-using&#160;</td><td class="memItemRight" valign="bottom"><b>BoundingBox</b> = <a class="el" href="struct_s_v_g_1_1_quad_coord.html">QuadCoord</a></td></tr>
-<tr class="separator:a91d3b388204869512bdf19041bb67d28"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac627aa6579c429146489278170f116c8"><td class="memItemLeft" align="right" valign="top"><a id="ac627aa6579c429146489278170f116c8"></a>
 using&#160;</td><td class="memItemRight" valign="bottom"><b>ChildList</b> = std::vector&lt; <a class="el" href="class_s_v_g_1_1_element.html">Element</a> * &gt;</td></tr>
 <tr class="separator:ac627aa6579c429146489278170f116c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -106,6 +100,12 @@ using&#160;</td><td class="memItemRight" valign="bottom"><b>ChildMap</b> = std::
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a307c9b5b210b59844045f09c0f9d23bc"><td class="memItemLeft" align="right" valign="top"><a id="a307c9b5b210b59844045f09c0f9d23bc"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Element</b> (const <a class="el" href="class_s_v_g_1_1_element.html">Element</a> &amp;other)=delete</td></tr>
+<tr class="separator:a307c9b5b210b59844045f09c0f9d23bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a068f002f98cf6b1fdc683a6f18baaa2a"><td class="memItemLeft" align="right" valign="top"><a id="a068f002f98cf6b1fdc683a6f18baaa2a"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Element</b> (<a class="el" href="class_s_v_g_1_1_element.html">Element</a> &amp;&amp;other)=default</td></tr>
+<tr class="separator:a068f002f98cf6b1fdc683a6f18baaa2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a435e0f3157f5e34d4caae75e5c3d02e1"><td class="memItemLeft" align="right" valign="top"><a id="a435e0f3157f5e34d4caae75e5c3d02e1"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Element</b> (const char *id)</td></tr>
 <tr class="separator:a435e0f3157f5e34d4caae75e5c3d02e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -115,17 +115,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aacd067c251bfd6652d0ac8a6d3a92aba"><td class="memTemplParams" colspan="2">template&lt;typename T , typename... Args&gt; </td></tr>
 <tr class="memitem:aacd067c251bfd6652d0ac8a6d3a92aba"><td class="memTemplItemLeft" align="right" valign="top">T *&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#aacd067c251bfd6652d0ac8a6d3a92aba">add_child</a> (Args &amp;&amp;... args)</td></tr>
 <tr class="separator:aacd067c251bfd6652d0ac8a6d3a92aba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a99da6f3c751839720a17d7d714f4816c"><td class="memTemplParams" colspan="2"><a id="a99da6f3c751839720a17d7d714f4816c"></a>
-template&lt;typename T &gt; </td></tr>
-<tr class="memitem:a99da6f3c751839720a17d7d714f4816c"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_element.html">Element</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>operator&lt;&lt;</b> (T &amp;&amp;node)</td></tr>
+<tr class="memitem:a99da6f3c751839720a17d7d714f4816c"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:a99da6f3c751839720a17d7d714f4816c"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_element.html">Element</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a99da6f3c751839720a17d7d714f4816c">operator&lt;&lt;</a> (T &amp;&amp;node)</td></tr>
 <tr class="separator:a99da6f3c751839720a17d7d714f4816c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af630ff0f1bf22962c3dc40c10d3bffe4"><td class="memTemplParams" colspan="2"><a id="af630ff0f1bf22962c3dc40c10d3bffe4"></a>
-template&lt;typename T &gt; </td></tr>
-<tr class="memitem:af630ff0f1bf22962c3dc40c10d3bffe4"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; T * &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>get_children</b> ()</td></tr>
+<tr class="memitem:af630ff0f1bf22962c3dc40c10d3bffe4"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:af630ff0f1bf22962c3dc40c10d3bffe4"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; T * &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#af630ff0f1bf22962c3dc40c10d3bffe4">get_children</a> ()</td></tr>
 <tr class="separator:af630ff0f1bf22962c3dc40c10d3bffe4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa1a32b72fcba6fd642111bc40a4841ea"><td class="memTemplParams" colspan="2"><a id="aa1a32b72fcba6fd642111bc40a4841ea"></a>
-template&lt;typename T &gt; </td></tr>
-<tr class="memitem:aa1a32b72fcba6fd642111bc40a4841ea"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; T * &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>get_immediate_children</b> ()</td></tr>
+<tr class="memitem:aa1a32b72fcba6fd642111bc40a4841ea"><td class="memTemplParams" colspan="2">template&lt;typename T &gt; </td></tr>
+<tr class="memitem:aa1a32b72fcba6fd642111bc40a4841ea"><td class="memTemplItemLeft" align="right" valign="top">std::vector&lt; T * &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#aa1a32b72fcba6fd642111bc40a4841ea">get_immediate_children</a> ()</td></tr>
 <tr class="separator:aa1a32b72fcba6fd642111bc40a4841ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5702246c0b268ed76ede823549d2018c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_element.html">Element</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a5702246c0b268ed76ede823549d2018c">get_element_by_id</a> (const std::string &amp;id)</td></tr>
 <tr class="separator:a5702246c0b268ed76ede823549d2018c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -133,46 +130,42 @@ template&lt;typename T &gt; </td></tr>
 <tr class="separator:ad1cdcf6df8d8f753f66cd02a68d5af3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a97745cb43664db60571dfd03b12f713c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a97745cb43664db60571dfd03b12f713c">autoscale</a> (const <a class="el" href="struct_s_v_g_1_1_quad_coord.html">Margins</a> &amp;margins=DEFAULT_MARGINS)</td></tr>
 <tr class="separator:a97745cb43664db60571dfd03b12f713c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a59bf807779af8dba68f6b067b70aa30d"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="struct_s_v_g_1_1_quad_coord.html">BoundingBox</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a59bf807779af8dba68f6b067b70aa30d">get_bbox</a> ()</td></tr>
+<tr class="memitem:aee04258704b8a7f5ad3b4a340229bffd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#aee04258704b8a7f5ad3b4a340229bffd">autoscale</a> (const double margin)</td></tr>
+<tr class="separator:aee04258704b8a7f5ad3b4a340229bffd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a59bf807779af8dba68f6b067b70aa30d"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="class_s_v_g_1_1_element_1_1_bounding_box.html">BoundingBox</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a59bf807779af8dba68f6b067b70aa30d">get_bbox</a> ()</td></tr>
 <tr class="separator:a59bf807779af8dba68f6b067b70aa30d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a88ee67088f6c3e9cc12b460e65b433ce"><td class="memItemLeft" align="right" valign="top">ChildMap&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a88ee67088f6c3e9cc12b460e65b433ce">get_children</a> ()</td></tr>
 <tr class="separator:a88ee67088f6c3e9cc12b460e65b433ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae24df77b3fff8828904c23c647e6a4db"><td class="memTemplParams" colspan="2"><a id="ae24df77b3fff8828904c23c647e6a4db"></a>
-template&lt;&gt; </td></tr>
-<tr class="memitem:ae24df77b3fff8828904c23c647e6a4db"><td class="memTemplItemLeft" align="right" valign="top">Element::ChildList&#160;</td><td class="memTemplItemRight" valign="bottom"><b>get_immediate_children</b> ()</td></tr>
+<tr class="memitem:ae24df77b3fff8828904c23c647e6a4db"><td class="memTemplParams" colspan="2">template&lt;&gt; </td></tr>
+<tr class="memitem:ae24df77b3fff8828904c23c647e6a4db"><td class="memTemplItemLeft" align="right" valign="top">Element::ChildList&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#ae24df77b3fff8828904c23c647e6a4db">get_immediate_children</a> ()</td></tr>
 <tr class="separator:ae24df77b3fff8828904c23c647e6a4db"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="inherit_header pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_s_v_g_1_1util_1_1_attribute_map')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_s_v_g_1_1util_1_1_attribute_map.html">SVG::util::AttributeMap</a></td></tr>
-<tr class="memitem:ab08381548020f91da26fcce7ca6f98e6 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memItemLeft" align="right" valign="top"><a id="ab08381548020f91da26fcce7ca6f98e6"></a>
+<tr class="inherit_header pub_methods_class_s_v_g_1_1_attribute_map"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_s_v_g_1_1_attribute_map')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_s_v_g_1_1_attribute_map.html">SVG::AttributeMap</a></td></tr>
+<tr class="memitem:ade0b33aa4ecc557bc2253790ae062078 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memItemLeft" align="right" valign="top"><a id="ade0b33aa4ecc557bc2253790ae062078"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>AttributeMap</b> (SVGAttrib _attr)</td></tr>
-<tr class="separator:ab08381548020f91da26fcce7ca6f98e6 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add2ecf91ace323e81aea45ad17bd2cb3 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplParams" colspan="2"><a id="add2ecf91ace323e81aea45ad17bd2cb3"></a>
+<tr class="separator:ade0b33aa4ecc557bc2253790ae062078 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae4935a15374a33c911ccff69ae9b2c97 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplParams" colspan="2"><a id="ae4935a15374a33c911ccff69ae9b2c97"></a>
 template&lt;typename T &gt; </td></tr>
-<tr class="memitem:add2ecf91ace323e81aea45ad17bd2cb3 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1util_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>set_attr</b> (const std::string key, T value)</td></tr>
-<tr class="separator:add2ecf91ace323e81aea45ad17bd2cb3 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a702f4320308e99735d3bfc6c0b17c8fb inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplParams" colspan="2"><a id="a702f4320308e99735d3bfc6c0b17c8fb"></a>
-template&lt;&gt; </td></tr>
-<tr class="memitem:a702f4320308e99735d3bfc6c0b17c8fb inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1util_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>set_attr</b> (const std::string key, const double value)</td></tr>
-<tr class="separator:a702f4320308e99735d3bfc6c0b17c8fb inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afefe1c6f9172d0341ea9bf2ebacacfb7 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplParams" colspan="2"><a id="afefe1c6f9172d0341ea9bf2ebacacfb7"></a>
-template&lt;&gt; </td></tr>
-<tr class="memitem:afefe1c6f9172d0341ea9bf2ebacacfb7 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1util_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>set_attr</b> (const std::string key, const char *value)</td></tr>
-<tr class="separator:afefe1c6f9172d0341ea9bf2ebacacfb7 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4e4338ab4c510bcaba38a238bfafb8e5 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplParams" colspan="2"><a id="a4e4338ab4c510bcaba38a238bfafb8e5"></a>
-template&lt;&gt; </td></tr>
-<tr class="memitem:a4e4338ab4c510bcaba38a238bfafb8e5 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1util_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>set_attr</b> (const std::string key, const std::string value)</td></tr>
-<tr class="separator:a4e4338ab4c510bcaba38a238bfafb8e5 inherit pub_methods_class_s_v_g_1_1util_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae4935a15374a33c911ccff69ae9b2c97 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>set_attr</b> (const std::string key, T value)</td></tr>
+<tr class="separator:ae4935a15374a33c911ccff69ae9b2c97 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac039cebf01151ce92a869113c3d40dab inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplParams" colspan="2">template&lt;&gt; </td></tr>
+<tr class="memitem:ac039cebf01151ce92a869113c3d40dab inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_attribute_map.html#ac039cebf01151ce92a869113c3d40dab">set_attr</a> (const std::string key, const double value)</td></tr>
+<tr class="separator:ac039cebf01151ce92a869113c3d40dab inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff9295d0830e2fc36665afa5996a2d15 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplParams" colspan="2">template&lt;&gt; </td></tr>
+<tr class="memitem:aff9295d0830e2fc36665afa5996a2d15 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_attribute_map.html#aff9295d0830e2fc36665afa5996a2d15">set_attr</a> (const std::string key, const char *value)</td></tr>
+<tr class="separator:aff9295d0830e2fc36665afa5996a2d15 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aebd5432d3f8999770dc5c41868447e44 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplParams" colspan="2">template&lt;&gt; </td></tr>
+<tr class="memitem:aebd5432d3f8999770dc5c41868447e44 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="class_s_v_g_1_1_attribute_map.html">AttributeMap</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_attribute_map.html#aebd5432d3f8999770dc5c41868447e44">set_attr</a> (const std::string key, const std::string value)</td></tr>
+<tr class="separator:aebd5432d3f8999770dc5c41868447e44 inherit pub_methods_class_s_v_g_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
 <tr class="memitem:a323e2b701a383a7a17944688cb614c78"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="class_s_v_g_1_1_element.html">Element</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a323e2b701a383a7a17944688cb614c78">get_children_helper</a> ()</td></tr>
 <tr class="separator:a323e2b701a383a7a17944688cb614c78"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afbda632ba35021590981436f6d7edf6d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#afbda632ba35021590981436f6d7edf6d">get_bbox</a> (<a class="el" href="struct_s_v_g_1_1_quad_coord.html">Element::BoundingBox</a> &amp;)</td></tr>
+<tr class="memitem:afbda632ba35021590981436f6d7edf6d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#afbda632ba35021590981436f6d7edf6d">get_bbox</a> (<a class="el" href="class_s_v_g_1_1_element_1_1_bounding_box.html">Element::BoundingBox</a> &amp;)</td></tr>
 <tr class="separator:afbda632ba35021590981436f6d7edf6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae1b532a04956ed9f7ba3d1e19ff7ce3a"><td class="memItemLeft" align="right" valign="top"><a id="ae1b532a04956ed9f7ba3d1e19ff7ce3a"></a>
-virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><b>svg_to_string</b> (const size_t indent_level)</td></tr>
+<tr class="memitem:ae1b532a04956ed9f7ba3d1e19ff7ce3a"><td class="memItemLeft" align="right" valign="top">virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#ae1b532a04956ed9f7ba3d1e19ff7ce3a">svg_to_string</a> (const size_t indent_level)</td></tr>
 <tr class="separator:ae1b532a04956ed9f7ba3d1e19ff7ce3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a664a927bc2a5d69b5915efc147a3dd32"><td class="memItemLeft" align="right" valign="top"><a id="a664a927bc2a5d69b5915efc147a3dd32"></a>
-virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><b>tag</b> ()=0</td></tr>
+<tr class="memitem:a664a927bc2a5d69b5915efc147a3dd32"><td class="memItemLeft" align="right" valign="top">virtual std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#a664a927bc2a5d69b5915efc147a3dd32">tag</a> ()=0</td></tr>
 <tr class="separator:a664a927bc2a5d69b5915efc147a3dd32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af837d5c0ad41e7ee22970e192bc0ee3e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_s_v_g_1_1_element.html#af837d5c0ad41e7ee22970e192bc0ee3e">find_numeric</a> (const std::string &amp;key)</td></tr>
 <tr class="separator:af837d5c0ad41e7ee22970e192bc0ee3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -185,12 +178,14 @@ std::vector&lt; std::unique_ptr&lt; <a class="el" href="class_s_v_g_1_1_element.
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="inherited"></a>
 Additional Inherited Members</h2></td></tr>
-<tr class="inherit_header pub_attribs_class_s_v_g_1_1util_1_1_attribute_map"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_class_s_v_g_1_1util_1_1_attribute_map')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="class_s_v_g_1_1util_1_1_attribute_map.html">SVG::util::AttributeMap</a></td></tr>
-<tr class="memitem:afd0cc2e1dcb660ad1044281efd496795 inherit pub_attribs_class_s_v_g_1_1util_1_1_attribute_map"><td class="memItemLeft" align="right" valign="top"><a id="afd0cc2e1dcb660ad1044281efd496795"></a>
+<tr class="inherit_header pub_attribs_class_s_v_g_1_1_attribute_map"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_class_s_v_g_1_1_attribute_map')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="class_s_v_g_1_1_attribute_map.html">SVG::AttributeMap</a></td></tr>
+<tr class="memitem:a4ad02ae1cd9fb3b91494024d5f45c694 inherit pub_attribs_class_s_v_g_1_1_attribute_map"><td class="memItemLeft" align="right" valign="top"><a id="a4ad02ae1cd9fb3b91494024d5f45c694"></a>
 SVGAttrib&#160;</td><td class="memItemRight" valign="bottom"><b>attr</b></td></tr>
-<tr class="separator:afd0cc2e1dcb660ad1044281efd496795 inherit pub_attribs_class_s_v_g_1_1util_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:a4ad02ae1cd9fb3b91494024d5f45c694 inherit pub_attribs_class_s_v_g_1_1_attribute_map"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Abstract base class for all <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> elements. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="aacd067c251bfd6652d0ac8a6d3a92aba"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aacd067c251bfd6652d0ac8a6d3a92aba">&#9670;&nbsp;</a></span>add_child()</h2>
 
@@ -216,12 +211,12 @@ template&lt;typename T , typename... Args&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Also return a pointer to the element added </p>
+<p>Add an <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> element as a child and return a pointer to the element added </p>
 
 </div>
 </div>
 <a id="a97745cb43664db60571dfd03b12f713c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a97745cb43664db60571dfd03b12f713c">&#9670;&nbsp;</a></span>autoscale()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a97745cb43664db60571dfd03b12f713c">&#9670;&nbsp;</a></span>autoscale() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -243,7 +238,40 @@ template&lt;typename T , typename... Args&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Modify this element's attributes so it can hold all of its child elements </p>
+<p>Automatically set the width, height, and viewBox attribute of this item so that it can contain all of its children without clipping</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">margins</td><td>Extra margins for the sides</td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aee04258704b8a7f5ad3b4a340229bffd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee04258704b8a7f5ad3b4a340229bffd">&#9670;&nbsp;</a></span>autoscale() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void SVG::Element::autoscale </td>
+          <td>(</td>
+          <td class="paramtype">const double&#160;</td>
+          <td class="paramname"><em>margin</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Like other <a class="el" href="class_s_v_g_1_1_element.html#a97745cb43664db60571dfd03b12f713c">autoscale()</a> but accepts margin as a percentage </p>
 
 </div>
 </div>
@@ -270,7 +298,14 @@ template&lt;typename T , typename... Args&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Return a numeric value or NAN </p>
+<p>The <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> tag of this element </p>
+<p>Return the numeric attribute (if it exists) or NAN</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">key</td><td>Name of the attribute</td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -284,7 +319,7 @@ template&lt;typename T , typename... Args&gt; </div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="struct_s_v_g_1_1_quad_coord.html">Element::BoundingBox</a> SVG::Element::get_bbox </td>
+          <td class="memname"><a class="el" href="class_s_v_g_1_1_element_1_1_bounding_box.html">Element::BoundingBox</a> SVG::Element::get_bbox </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -312,7 +347,7 @@ template&lt;typename T , typename... Args&gt; </div>
         <tr>
           <td class="memname">void SVG::Element::get_bbox </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="struct_s_v_g_1_1_quad_coord.html">Element::BoundingBox</a> &amp;&#160;</td>
+          <td class="paramtype"><a class="el" href="class_s_v_g_1_1_element_1_1_bounding_box.html">Element::BoundingBox</a> &amp;&#160;</td>
           <td class="paramname"><em>box</em></td><td>)</td>
           <td></td>
         </tr>
@@ -327,8 +362,36 @@ template&lt;typename T , typename... Args&gt; </div>
 
 </div>
 </div>
+<a id="af630ff0f1bf22962c3dc40c10d3bffe4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af630ff0f1bf22962c3dc40c10d3bffe4">&#9670;&nbsp;</a></span>get_children() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;T*&gt; SVG::Element::get_children </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Return all children of type T </p>
+
+</div>
+</div>
 <a id="a88ee67088f6c3e9cc12b460e65b433ce"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a88ee67088f6c3e9cc12b460e65b433ce">&#9670;&nbsp;</a></span>get_children()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a88ee67088f6c3e9cc12b460e65b433ce">&#9670;&nbsp;</a></span>get_children() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -375,7 +438,8 @@ template&lt;typename T , typename... Args&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Helper function which populates a std::deque with all of an <a class="el" href="class_s_v_g_1_1_element.html">Element</a>'s children </p>
+<p>Smart pointers to child elements </p>
+<p>Helper function which populates a std::deque with all of an <a class="el" href="class_s_v_g_1_1_element.html" title="Abstract base class for all SVG elements. ">Element</a>'s children </p>
 
 </div>
 </div>
@@ -430,6 +494,154 @@ template&lt;typename T , typename... Args&gt; </div>
 </table>
 </div><div class="memdoc">
 <p>Return all <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> elements with a certain class name </p>
+
+</div>
+</div>
+<a id="aa1a32b72fcba6fd642111bc40a4841ea"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1a32b72fcba6fd642111bc40a4841ea">&#9670;&nbsp;</a></span>get_immediate_children() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;T*&gt; SVG::Element::get_immediate_children </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Return all immediate children of type T </p>
+
+</div>
+</div>
+<a id="ae24df77b3fff8828904c23c647e6a4db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae24df77b3fff8828904c23c647e6a4db">&#9670;&nbsp;</a></span>get_immediate_children() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Element::ChildList SVG::Element::get_immediate_children </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Return all immediate children, regardless of type, as <a class="el" href="class_s_v_g_1_1_element.html" title="Abstract base class for all SVG elements. ">Element</a> pointers </p>
+
+</div>
+</div>
+<a id="a99da6f3c751839720a17d7d714f4816c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a99da6f3c751839720a17d7d714f4816c">&#9670;&nbsp;</a></span>operator<<()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="class_s_v_g_1_1_element.html">Element</a>&amp; SVG::Element::operator&lt;&lt; </td>
+          <td>(</td>
+          <td class="paramtype">T &amp;&amp;&#160;</td>
+          <td class="paramname"><em>node</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Move an <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> element into this container </p>
+
+</div>
+</div>
+<a id="ae1b532a04956ed9f7ba3d1e19ff7ce3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1b532a04956ed9f7ba3d1e19ff7ce3a">&#9670;&nbsp;</a></span>svg_to_string()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string SVG::Element::svg_to_string </td>
+          <td>(</td>
+          <td class="paramtype">const size_t&#160;</td>
+          <td class="paramname"><em>indent_level</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Return the string representation of an <a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> element</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[out]</td><td class="paramname">indent_level</td><td>The current level of indentation</td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented in <a class="el" href="class_s_v_g_1_1_s_v_g_1_1_style.html#a1b33c6de500c7e09db7292774cab24cb">SVG::SVG::Style</a>.</p>
+
+</div>
+</div>
+<a id="a664a927bc2a5d69b5915efc147a3dd32"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a664a927bc2a5d69b5915efc147a3dd32">&#9670;&nbsp;</a></span>tag()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual std::string SVG::Element::tag </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p><a class="el" href="class_s_v_g_1_1_s_v_g.html">SVG</a> string corresponding to this element </p>
+
+<p>Implemented in <a class="el" href="class_s_v_g_1_1_polygon.html#a546d78862b8605a2303fa7b3e00b2401">SVG::Polygon</a>, <a class="el" href="class_s_v_g_1_1_circle.html#aef830ab111e210e6bad52c0683d85e31">SVG::Circle</a>, <a class="el" href="class_s_v_g_1_1_rect.html#aaac3a173a64225a5afe29c9209b41cba">SVG::Rect</a>, <a class="el" href="class_s_v_g_1_1_line.html#a606f877d381c86fdd6bcdb2762a1778e">SVG::Line</a>, <a class="el" href="class_s_v_g_1_1_group.html#a702e4b869152464ecc3d303c3db66ac3">SVG::Group</a>, <a class="el" href="class_s_v_g_1_1_text.html#a4d7cc933a6b86b46a7b77f8cff5007f2">SVG::Text</a>, <a class="el" href="class_s_v_g_1_1_path.html#af84ae354359b3f98355a23492c4aa60f">SVG::Path</a>, <a class="el" href="class_s_v_g_1_1_s_v_g.html#a36e30739124b41f69c8a113951c3986a">SVG::SVG</a>, and <a class="el" href="class_s_v_g_1_1_s_v_g_1_1_style.html#a55356eb620c2f95ffb8cc1404e20afaf">SVG::SVG::Style</a>.</p>
 
 </div>
 </div>

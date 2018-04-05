@@ -5,7 +5,7 @@ This a header-only library for generating SVG files from a simple C++ interface.
 
 [Want to see more? Read the documentation.](https://vincentlaucsb.github.io/svg/)
 
-## Basic Example
+## Basic Usage
 
 ```
 #include "svg.hpp"
@@ -65,3 +65,6 @@ int main() {
 	</g>
 </svg>
 ```
+
+## Simple Animations
+This package supports creating basic animations via CSS keyframes via the frame_animate() function.

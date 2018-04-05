@@ -1,3 +1,4 @@
+/** @file */
 #pragma once
 #define PI 3.14159265
 #define SVG_TYPE_CHECK static_assert(std::is_base_of<Element, T>::value, "Child must be an SVG element.")
@@ -17,13 +18,12 @@
 #include <typeinfo>
 
 namespace SVG {
-    using SVGAttrib = std::map<std::string, std::string>;
-    using Point = std::pair<double, double>;
-
+    /** @namespace SVG
+     *  @brief Main namespace for SVG for C++
+     */
     class AttributeMap;
-    inline std::string to_string(const double& value);
-    inline std::string to_string(const Point& point);
-    inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level=0);
+    class SVG;
+    class Shape;
 
     struct QuadCoord {
         double x1;
@@ -32,12 +32,25 @@ namespace SVG {
         double y2;
     };
 
+    using SelectorProperties = std::map<std::string, AttributeMap>;
+    using SVGAttrib = std::map<std::string, std::string>;
+    using Point = std::pair<double, double>;
     using Margins = QuadCoord;
+
+    inline std::string to_string(const double& value);
+    inline std::string to_string(const Point& point);
+    inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level=0);
+
+    std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
+    SVG frame_animate(std::vector<SVG>& frames, const double fps);
+    SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
 
+    /** @namespace util
+     *  @brief Various utility and mathematical functions
+     */
     namespace util {
-        /** Various utility and mathematical functions */
         enum Orientation {
             COLINEAR, CLOCKWISE, COUNTERCLOCKWISE
         };
@@ -142,10 +155,13 @@ namespace SVG {
     }
 
     inline std::string to_string(const Point& point) {
+        /** Return a string representation of a point as "x,y" */
         return to_string(point.first) + "," + to_string(point.second);
     }
 
-    /** Base class for anything that has attributes */
+    /** @class AttributeMap
+     *  @brief Base class for anything that has attributes (e.g. SVG elements, CSS stylesheets)
+     */
     class AttributeMap {
     public:
         AttributeMap() = default;
@@ -161,24 +177,33 @@ namespace SVG {
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
+        /** Modify the attribute specified by key */
         this->attr[key] = to_string(value);
         return *this;
     }
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
+        /** Modify the attribute specified by key */
         this->attr[key] = value;
         return *this;
     }
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
+        /** Modify the attribute specified by key */
         this->attr[key] = value;
         return *this;
     }
 
+    /** @class Element
+     *  @brief Abstract base class for all SVG elements
+     */
     class Element: public AttributeMap {
     public:
+        /** @class BoundingBox
+         *  @brief Represents the top left and bottom right corners of a bounding rectangle
+         */
         class BoundingBox : public QuadCoord {
         public:
             using QuadCoord::QuadCoord;
@@ -211,7 +236,7 @@ namespace SVG {
 
         template<typename T, typename... Args>
         T* add_child(Args&&... args) {
-            /** Also return a pointer to the element added */
+            /** Add an SVG element as a child and return a pointer to the element added */
             SVG_TYPE_CHECK;
             this->children.push_back(std::make_unique<T>(std::forward<Args>(args)...));
             return (T*)this->children.back().get();
@@ -219,6 +244,7 @@ namespace SVG {
 
         template<typename T>
         Element& operator<<(T&& node) {
+            /** Move an SVG element into this container */
             SVG_TYPE_CHECK;
             this->children.push_back(std::make_unique<T>(std::move(node)));
             return *this;
@@ -226,6 +252,7 @@ namespace SVG {
 
         template<typename T>
         std::vector<T*> get_children() {
+            /** Return all children of type T */
             SVG_TYPE_CHECK;
             std::vector<T*> ret;
             auto child_elems = this->get_children_helper();
@@ -238,6 +265,7 @@ namespace SVG {
 
         template<typename T>
         std::vector<T*> get_immediate_children() {
+            /** Return all immediate children of type T */
             SVG_TYPE_CHECK;
             std::vector<T*> ret;
             for (auto& child : this->children)
@@ -254,14 +282,17 @@ namespace SVG {
         ChildMap get_children();
 
     protected:
-        std::vector<std::unique_ptr<Element>> children;
+        std::vector<std::unique_ptr<Element>> children; /** Smart pointers to child elements */
         std::vector<Element*> get_children_helper();
         void get_bbox(Element::BoundingBox&);
-        virtual std::string svg_to_string(const size_t indent_level);
-        virtual std::string tag() = 0;
+        virtual std::string svg_to_string(const size_t indent_level); /** SVG string corresponding to this element */
+        virtual std::string tag() = 0; /** The SVG tag of this element */
 
         double find_numeric(const std::string& key) {
-            /** Return a numeric value or NAN */
+            /** Return the numeric attribute (if it exists) or NAN
+             *
+             *  @param[in] key Name of the attribute
+             */
             if (attr.find(key) != attr.end())
                 return std::stof(attr[key]);
             return NAN;
@@ -270,6 +301,7 @@ namespace SVG {
 
     template<>
     inline Element::ChildList Element::get_immediate_children() {
+        /** Return all immediate children, regardless of type, as Element pointers */
         Element::ChildList ret;
         for (auto& child : this->children) ret.push_back(child.get());
         return ret;
@@ -304,13 +336,17 @@ namespace SVG {
         return { NAN, NAN, NAN, NAN };
     }
 
+    /** @class Shape
+     *  @brief Base class for any SVG elements that have a width and height
+     */
     class Shape: public Element {
-        /** Abstract base class for any SVG elements that have a width and height */
     public:
         using Element::Element;
 
-        // Implicit conversion to Point
-        operator Point() { return std::make_pair(this->x(), this->y()); }
+        operator Point() {
+            /** Implicit conversion to Point */
+            return std::make_pair(this->x(), this->y());
+        }
 
         virtual std::vector<Point> points() {
             /** Return a set of points used for calculating a bounding polygon for this object */
@@ -325,47 +361,56 @@ namespace SVG {
 
         virtual double x() { return this->find_numeric("x"); }
         virtual double y() { return this->find_numeric("y"); }
-        virtual double width() { return this->find_numeric("width"); }
-        virtual double height() { return this->find_numeric("height"); }
-    };
-
-    std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
-
-    class Style : public Element {
-    public:
-        Style() = default;
-        using Element::Element;
-        std::map<std::string, AttributeMap> css;
-        std::map<std::string, std::map<std::string, AttributeMap>> keyframes;
-
-    protected:
-        std::string svg_to_string(const size_t) override;
-        std::string tag() override { return "style"; };
+        virtual double width() {
+            /** Return this item's width, either by calculating it or finding the 
+             *  width attribute
+             */
+            return this->find_numeric("width");
+        }
+        virtual double height() {
+            /** Return this item's height, either by calculating it or finding the
+             *  height attribute
+             */
+            return this->find_numeric("height");
+        }
     };
 
     class SVG : public Shape {
     public:
-        SVG(std::map < std::string, std::string > _attr =
+        class Style : public Element {
+        public:
+            Style() = default;
+            using Element::Element;
+            SelectorProperties css; /**< Basic CSS styling */
+            std::map<std::string, SelectorProperties> keyframes; /**< CSS animations */
+
+        protected:
+            std::string svg_to_string(const size_t) override;
+            std::string tag() override { return "style"; };
+        };
+
+        SVG(SVGAttrib _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
-        ) : Shape(_attr) {};
+        ) : Shape(_attr) {}; /**< Create an <svg> with specified attributes */
         AttributeMap& style(const std::string& key) {
             if (!this->css) this->css = this->add_child<Style>();
             return this->css->css[key];
         }
 
         std::map<std::string, AttributeMap>& keyframes(const std::string& key) {
+            /** Add or modify an animation keyframe
+             *
+             *  @param[in] key The name of the animation
+             */
             if (!this->css) this->css = this->add_child<Style>();
             return this->css->keyframes[key];
         }
 
-        Style* css = nullptr;
+        Style* css = nullptr; /**< This item's associated CSS stylesheet */
 
     protected:
         std::string tag() override { return "svg"; }
     };
-
-    SVG frame_animate(std::vector<SVG>& frames, const double fps);
-    SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
 
     class Path : public Shape {
     public:
@@ -374,8 +419,8 @@ namespace SVG {
         template<typename T>
         inline void start(T x, T y) {
             /** Start line at (x, y)
-            *  This function overwrites the current path if it exists
-            */
+             *  This function overwrites the current path if it exists
+             */
             this->attr["d"] = "M " + std::to_string(x) + " " + std::to_string(y);
             this->x_start = x;
             this->y_start = y;
@@ -384,9 +429,9 @@ namespace SVG {
         template<typename T>
         inline void line_to(T x, T y) {
             /** Draw a line to (x, y)
-            *  If line has not been initialized by setting a starting point,
-            *  then start() will be called with (x, y) as arguments
-            */
+             *  If line has not been initialized by setting a starting point,
+             *  then start() will be called with (x, y) as arguments
+             */
 
             if (this->attr.find("d") == this->attr.end())
                 start(x, y);
@@ -584,6 +629,11 @@ namespace SVG {
     }
 
     inline std::string Element::svg_to_string(const size_t indent_level) {
+        /** Return the string representation of an SVG element
+         *
+         *  @param[out] indent_level The current level of indentation
+         */
+         
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<" + tag();
 
@@ -604,8 +654,6 @@ namespace SVG {
         return ret += " />";
     }
 
-
-
     inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level) {
         /** Print out a CSS attribute block */
         auto indent = std::string(indent_level, '\t'), ret = std::string();
@@ -619,7 +667,8 @@ namespace SVG {
         return ret;
     }
 
-    inline std::string Style::svg_to_string(const size_t indent_level) {
+    inline std::string SVG::Style::svg_to_string(const size_t indent_level) {
+        /** Create a CSS stylesheet */
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<style type=\"text/css\">\n" +
             indent + "\t<![CDATA[\n";
@@ -660,7 +709,11 @@ namespace SVG {
     }
 
     inline void Element::autoscale(const Margins& margins) {
-        /** Modify this element's attributes so it can hold all of its child elements */
+        /** Automatically set the width, height, and viewBox attribute of this item
+         *  so that it can contain all of its children without clipping
+         *
+         *  @param[in] margins Extra margins for the sides
+         */
         using std::stof;
 
         Element::BoundingBox bbox = this->get_bbox();
@@ -750,8 +803,10 @@ namespace SVG {
     }
 
     inline SVG frame_animate(std::vector<SVG>& frames, const double fps) {
-        /** Given a container (e.g. std::vector) of SVGs, create
-         *  a frame-by-frame animation of them
+        /** Given a vector of SVGs, create a frame-by-frame animation of them
+         *
+         *  @param[in]  A vector of frames (SVGs)
+         *  @param[out] fps Numbers of frames per second
          */
         SVG root;
         const double duration = (double)frames.size() / fps; // [seconds]

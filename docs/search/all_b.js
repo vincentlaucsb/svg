@@ -1,5 +1,7 @@
 var searchData=
 [
-  ['text',['Text',['../class_s_v_g_1_1_text.html',1,'SVG']]],
-  ['to_5forigin',['to_origin',['../class_s_v_g_1_1_path.html#ac8a16fb4c233cad891287e425940b97d',1,'SVG::Path']]]
+  ['path',['Path',['../class_s_v_g_1_1_path.html',1,'SVG']]],
+  ['points',['points',['../class_s_v_g_1_1_shape.html#a6712b765fd83fb9760825dcc521ccaf0',1,'SVG::Shape']]],
+  ['polar_5fpoints',['polar_points',['../svg_8hpp.html#a2d8ee83c66b933a45fe4cd725ff52bea',1,'SVG::util']]],
+  ['polygon',['Polygon',['../class_s_v_g_1_1_polygon.html',1,'SVG']]]
 ];
