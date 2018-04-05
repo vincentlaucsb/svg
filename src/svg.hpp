@@ -36,6 +36,8 @@ namespace SVG {
     using SVGAttrib = std::map<std::string, std::string>;
     using Point = std::pair<double, double>;
     using Margins = QuadCoord;
+    const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
+    const static Margins NO_MARGINS = { 0, 0, 0, 0 };
 
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
@@ -44,8 +46,6 @@ namespace SVG {
     std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
     SVG frame_animate(std::vector<SVG>& frames, const double fps);
     SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
-    const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
-    const static Margins NO_MARGINS = { 0, 0, 0, 0 };
 
     /** @namespace util
      *  @brief Various utility and mathematical functions

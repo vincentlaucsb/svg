@@ -1,5 +1,7 @@
 # SVG for C++
 
+[![Build Status](https://travis-ci.org/vincentlaucsb/svg.svg?branch=master)](https://travis-ci.org/vincentlaucsb/svg) [![codecov](https://codecov.io/gh/vincentlaucsb/svg/branch/master/graph/badge.svg)](https://codecov.io/gh/vincentlaucsb/svg)
+
 ## Purpose
 This a header-only library for generating SVG files from a simple C++ interface. It can also perform non-trivial tasks such as calculating a bounding box for an SVG's elements, or merging several graphics together.
 
