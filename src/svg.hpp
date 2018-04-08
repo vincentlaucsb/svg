@@ -227,6 +227,9 @@ namespace SVG {
         Element() = default;
         Element(const Element& other) = delete; // No copy constructor
         Element(Element&& other) = default; // Move constructor
+        Element& operator=(const Element&) = delete; // No copy assignment
+        Element& operator=(Element&& other) = default;
+
         Element(const char* id) : AttributeMap(
             SVGAttrib({ { "id", id } })) {};
         using AttributeMap::AttributeMap;
