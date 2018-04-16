@@ -1,6 +1,7 @@
 /** @file */
 #pragma once
 #define PI 3.14159265
+#define RAD_TO_DEG (180/PI)
 #define SVG_TYPE_CHECK static_assert(std::is_base_of<Element, T>::value, "Child must be an SVG element.")
 #define APPROX_EQUALS(x, y, tol) bool(abs(x - y) < tol)
 #include <iostream>
@@ -164,6 +165,17 @@ namespace SVG {
      */
     class AttributeMap {
     public:
+        struct AttrSetter {
+            AttrSetter(SVGAttrib::mapped_type& _attr) : attr(_attr) {};
+            SVGAttrib::mapped_type& attr;
+
+            template<typename T>
+            AttrSetter& operator<<(T value) {
+                attr += std::to_string(value);
+                return *this;
+            }
+        };
+
         AttributeMap() = default;
         AttributeMap(SVGAttrib _attr) : attr(_attr) {};
         SVGAttrib attr;
@@ -173,7 +185,18 @@ namespace SVG {
             this->attr[key] = std::to_string(value);
             return *this;
         }
+
+        AttrSetter set_attr(const std::string key) {
+            if (this->attr.find(key) == this->attr.end()) this->attr[key] = "";
+            return AttrSetter(this->attr.at(key));
+        };
     };
+
+    template<>
+    inline AttributeMap::AttrSetter& AttributeMap::AttrSetter::operator<<(const char * value) {
+        attr += value;
+        return *this;
+    }
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
@@ -501,20 +524,23 @@ namespace SVG {
 
         Line(Point x, Point y) : Line(x.first, y.first, x.second, y.second) {};
 
-        double x1() { return std::stof(this->attr["x1"]); }
-        double x2() { return std::stof(this->attr["x2"]); }
-        double y1() { return std::stof(this->attr["y1"]); }
-        double y2() { return std::stof(this->attr["y2"]); }
+        virtual double x() override { return x1() + (x2() - x1()) / 2; }
+        virtual double y() override { return y1() + (y2() - y1()) / 2; }
+        double x1() { return this->find_numeric("x1"); }
+        double x2() { return this->find_numeric("x2"); }
+        double y1() { return this->find_numeric("y1"); }
+        double y2() { return this->find_numeric("y2"); }
 
         double width() override { return std::abs(x2() - x1()); }
         double height() override { return std::abs(y2() - y1()); }
-        double get_length() { return std::sqrt(pow(width(), 2) + pow(height(), 2)); }
-        double get_slope() { return (y2() - y1()) / (x2() - x1()); }
+        double length() { return std::sqrt(pow(width(), 2) + pow(height(), 2)); }
+        double slope() { return (y2() - y1()) / (x2() - x1()); }
+        double angle() { return atan(this->slope()) * RAD_TO_DEG; }
 
         std::pair<double, double> along(double percent);
 
     protected:
-        Element::BoundingBox get_bbox() override;
+        Element::BoundingBox get_bbox() override;   
         std::string tag() override { return "line"; }
     };
 
@@ -607,8 +633,8 @@ namespace SVG {
         double x_pos, y_pos;
 
         if (x1() != x2()) {
-            double length = percent * this->get_length();
-            double discrim = std::sqrt(4 * pow(length, 2) * (1 / (1 + pow(get_slope(), 2))));
+            double length = percent * this->length();
+            double discrim = std::sqrt(4 * pow(length, 2) * (1 / (1 + pow(slope(), 2))));
 
             double x_a = (2 * x1() + discrim) / 2;
             double x_b = (2 * x1() - discrim) / 2;
@@ -617,15 +643,15 @@ namespace SVG {
             if ((x_a > x1() && x_a > x2()) || (x_a < x1() && x_a < x2()))
                 x_pos = x_b;
 
-            y_pos = get_slope() * (x_pos - x1()) + y1();
+            y_pos = slope() * (x_pos - x1()) + y1();
         }
         else { // Edge case:: Completely vertical lines
             x_pos = x1();
 
             if (y1() > y2()) // Downward pointing
-                y_pos = y1() - percent * this->get_length();
+                y_pos = y1() - percent * this->length();
             else
-                y_pos = y1() + percent * this->get_length();
+                y_pos = y1() + percent * this->length();
         }
 
         return std::make_pair(x_pos, y_pos);
