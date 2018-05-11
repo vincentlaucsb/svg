@@ -47,6 +47,7 @@ namespace SVG {
     std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
     SVG frame_animate(std::vector<SVG>& frames, const double fps);
     SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
+    SVG merge(std::vector<SVG>& frames, const double width, const int max_frame_width);
 
     /** @namespace util
      *  @brief Various utility and mathematical functions
@@ -829,6 +830,47 @@ namespace SVG {
         }
 
         return util::convex_hull(points);
+    }
+
+    inline SVG merge(std::vector<SVG>& frames, const double width, const int max_frame_width) {
+        /** Given a vector of SVGs, merge them together
+         *  max_frame_width: Maximum width of any individual frame
+         */
+        SVG root;
+        double x = 0, y = 0, total_width = 0, total_height = 0;
+        for (auto& frame : frames) {
+            // Scale
+            frame.autoscale();
+            if (frame.width() > max_frame_width) {
+                const double scale_factor = max_frame_width/frame.width();
+                frame.set_attr("width", max_frame_width);
+                frame.set_attr("height", frame.height() * scale_factor); // Scale height proportionally
+            }
+        }
+
+        // Move
+        double current_height = 0;
+        for (auto& frame : frames) {
+            // Push to next row
+            if ((x + frame.width()) > width) {
+                total_width = std::max(total_width, x);
+                x = 0;
+                y += current_height;
+                current_height = 0;
+            }
+
+            frame.set_attr("x", x).set_attr("y", y);
+            x += frame.width();
+            current_height = std::max(current_height, frame.height());
+            root << std::move(frame);
+        }
+
+        total_height = y + current_height;
+
+        // Set viewbox
+        root.set_attr("viewBox") << 0 << " " << 0 << " " << total_width << " " << total_height;
+        root.set_attr("width", total_width).set_attr("height", total_height);
+        return root;
     }
 
     inline SVG frame_animate(std::vector<SVG>& frames, const double fps) {
