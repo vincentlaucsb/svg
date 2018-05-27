@@ -419,10 +419,7 @@ namespace SVG {
         SVG(SVGAttrib _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {}; /**< Create an <svg> with specified attributes */
-        AttributeMap& style(const std::string& key) {
-            if (!this->css) this->css = this->add_child<Style>();
-            return this->css->css[key];
-        }
+        AttributeMap& style(const std::string& key) { return this->css->css[key]; }
 
         std::map<std::string, AttributeMap>& keyframes(const std::string& key) {
             /** Add or modify an animation keyframe
@@ -433,7 +430,7 @@ namespace SVG {
             return this->css->keyframes[key];
         }
 
-        Style* css = nullptr; /**< This item's associated CSS stylesheet */
+        Style* css = this->add_child<Style>(); /**< This item's associated CSS stylesheet */
 
     protected:
         std::string tag() override { return "svg"; }
