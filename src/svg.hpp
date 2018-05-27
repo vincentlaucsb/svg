@@ -672,8 +672,11 @@ namespace SVG {
             ret += ">\n";
 
             // Recursively get strings for child elements
-            for (auto& child: children)
-                ret += child->svg_to_string(indent_level + 1) + "\n";
+            for (auto& child : children) {
+                // Avoid adding empty strings
+                auto str = child->svg_to_string(indent_level + 1);
+                if (str.size()) ret += str +"\n";
+            }
 
             return ret += indent + "</" + tag() + ">";
         }
@@ -697,21 +700,26 @@ namespace SVG {
     inline std::string SVG::Style::svg_to_string(const size_t indent_level) {
         /** Create a CSS stylesheet */
         auto indent = std::string(indent_level, '\t');
-        std::string ret = indent + "<style type=\"text/css\">\n" +
-            indent + "\t<![CDATA[\n";
 
-        // Begin CSS stylesheet
-        ret += to_string(this->css, indent_level);
+        if (!this->css.empty() || !this->keyframes.empty()) {
+            std::string ret = indent + "<style type=\"text/css\">\n" +
+                indent + "\t<![CDATA[\n";
 
-        // Animation frames
-        for (auto& anim : this->keyframes) {
-            ret += indent + "\t\t@keyframes " + anim.first + " {\n" +
-                to_string(anim.second, indent_level + 1) +
-                indent + "\t\t" + "}\n";
+            // Begin CSS stylesheet
+            ret += to_string(this->css, indent_level);
+
+            // Animation frames
+            for (auto& anim : this->keyframes) {
+                ret += indent + "\t\t@keyframes " + anim.first + " {\n" +
+                    to_string(anim.second, indent_level + 1) +
+                    indent + "\t\t" + "}\n";
+            }
+
+            ret += indent + "\t]]>\n";
+            return ret + indent + "</style>";
         }
 
-        ret += indent + "\t]]>\n";
-        return ret + indent + "</style>";
+        return "";
     }
 
     inline std::string Text::svg_to_string(const size_t indent_level) {

@@ -38,10 +38,6 @@ TEST_CASE("CSS Styling", "[test_css]") {
     SVG::SVG root = two_circles();
     root.style("circle").set_attr("fill", "#000000").set_attr("stroke", "#000000");
     std::string correct = "<svg xmlns=\"http://www.w3.org/2000/svg\">\n"
-        "\t<g>\n"
-        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
-        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
-        "\t</g>\n"
         "\t<style type=\"text/css\">\n"
         "\t\t<![CDATA[\n"
         "\t\t\tcircle {\n"
@@ -50,6 +46,10 @@ TEST_CASE("CSS Styling", "[test_css]") {
         "\t\t\t}\n"
         "\t\t]]>\n"
         "\t</style>\n"
+        "\t<g>\n"
+        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
+        "\t\t<circle cx=\"0.0\" cy=\"0.0\" r=\"0.0\" />\n"
+        "\t</g>\n"
         "</svg>";
 
     REQUIRE(std::string(root) == correct);
@@ -69,6 +69,7 @@ TEST_CASE("get_children() Test - Basic", "[test_get_children]") {
     SVG::SVG root;
     auto circ_ptr = root.add_child<SVG::Circle>();
     SVG::Element::ChildMap correct = {
+        { "style", std::vector<SVG::Element*>{root.css} },
         { "circle", std::vector<SVG::Element*>{circ_ptr} }
     };
 
