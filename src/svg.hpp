@@ -17,6 +17,7 @@
 #include <memory>
 #include <type_traits> // is_base_of
 #include <typeinfo>
+#include <list>
 
 namespace SVG {
     /** @namespace SVG
@@ -446,8 +447,12 @@ namespace SVG {
              *  This function overwrites the current path if it exists
              */
             this->attr["d"] = "M " + std::to_string(x) + " " + std::to_string(y);
-            this->x_start = x;
-            this->y_start = y;
+            this->points.clear();
+            this->points.push_back(std::make_pair(x, y));
+        }
+
+        inline void start(SVG::Point coord) {
+            this->start(coord.first, coord.second);
         }
 
         template<typename T>
@@ -460,25 +465,47 @@ namespace SVG {
             if (this->attr.find("d") == this->attr.end())
                 start(x, y);
             else
-                this->attr["d"] += " L " + std::to_string(x) +
-                                   " " + std::to_string(y);
+            {
+                this->attr["d"] += " L " + std::to_string(x) + " " + std::to_string(y);
+                this->points.push_back(std::make_pair(x, y));
+            }
         }
 
-        inline void line_to(std::pair<double, double> coord) {
+        inline void line_to(SVG::Point coord) {
             this->line_to(coord.first, coord.second);
+        }
+
+        template<typename T>
+        inline void curve_to(T rx, T ry, T r, int bf, int af, T x, T y) {
+            /** Draw a curve to (x, y) with the supplied arguments.
+             *  If path has not been initialized by setting a starting point,
+             *  then start() will be called with (x, y) as arguments
+             */
+
+            if (this->attr.find("d") == this->attr.end())
+                start(x, y);
+            else
+            {
+                this->attr["d"] += " A " + std::to_string(rx) + " " + std::to_string(ry) + " " + std::to_string(r) + " " + std::to_string(bf) + " " + std::to_string(af) + " " + std::to_string(x) + " " + std::to_string(y);
+                this->points.push_back(std::make_pair(x, y));
+            }
+        }
+
+        inline void curve_to(double rx, double ry, double r, int bf, int af, SVG::Point coord) {
+            this->curve_to(rx, ry, r, bf, af, coord.first, coord.second);
         }
 
         inline void to_origin() {
             /** Draw a line back to the origin */
-            this->line_to(x_start, y_start);
+            this->line_to(points.front());
         }
 
     protected:
+        Element::BoundingBox get_bbox() override;
         std::string tag() override { return "path"; }
 
     private:
-        double x_start;
-        double y_start;
+        std::list<Point> points;
     };
 
     class Text : public Element {
@@ -604,6 +631,22 @@ namespace SVG {
 
     inline Element::BoundingBox Line::get_bbox() {
         return { x1(), x2(), y1(), y2() };
+    }
+
+    //return the outer most point in each direction and hope path doesnt go furter out
+    //always works for straight lines, but sometimes not for curves
+    inline Element::BoundingBox Path::get_bbox()
+    {
+        Element::BoundingBox tmp{0, 0, 0, 0};
+        for(auto p : points)
+        {
+            if(p.first < tmp.x1) tmp.x1 = p.first;
+            if(p.second < tmp.y1) tmp.y1 = p.second;
+            if(p.first > tmp.x2) tmp.x2 = p.first;
+            if(p.second > tmp.y2) tmp.y2 = p.second;
+        }
+
+        return tmp;
     }
 
     inline Element::BoundingBox Rect::get_bbox() {
