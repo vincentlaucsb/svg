@@ -263,6 +263,7 @@ namespace SVG {
         using ChildMap = std::map<std::string, ChildList>;
 
         Element() = default;
+        virtual ~Element() = default;
         Element(const Element& other) = delete; // No copy constructor
         Element(Element&& other) = default; // Move constructor
         Element& operator=(const Element&) = delete; // No copy assignment
