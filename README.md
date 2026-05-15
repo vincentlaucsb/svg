@@ -9,7 +9,7 @@ This a header-only library for generating SVG files from a simple C++ interface.
 
 ## Basic Usage
 
-```
+```cpp
 #include "svg.hpp"
 #include <fstream>
 
@@ -47,7 +47,7 @@ int main() {
 
 ### Output
 
-```
+```svg
 <svg height="420.0" viewBox="-210.0 -210.0 420.0 420.0" width="420.0" xmlns="http://www.w3.org/2000/svg">
 	<style type="text/css">
 		<![CDATA[
