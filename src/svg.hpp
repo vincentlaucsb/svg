@@ -17,6 +17,7 @@
 #include <memory>
 #include <type_traits> // is_base_of
 #include <typeinfo>
+#include <utility>
 
 namespace SVG {
     /** @namespace SVG
@@ -39,6 +40,19 @@ namespace SVG {
     using Margins = QuadCoord;
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
+
+#if __cplusplus < 201402L
+    namespace detail {
+        template<typename T, typename... Args>
+        std::unique_ptr<T> make_unique(Args&&... args) {
+            return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+        }
+    }
+#else
+    namespace detail {
+        using std::make_unique;
+    }
+#endif
 
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
@@ -265,7 +279,7 @@ namespace SVG {
         T* add_child(Args&&... args) {
             /** Add an SVG element as a child and return a pointer to the element added */
             SVG_TYPE_CHECK;
-            this->children.push_back(std::make_unique<T>(std::forward<Args>(args)...));
+            this->children.push_back(detail::make_unique<T>(std::forward<Args>(args)...));
             return (T*)this->children.back().get();
         }
 
@@ -273,7 +287,7 @@ namespace SVG {
         Element& operator<<(T&& node) {
             /** Move an SVG element into this container */
             SVG_TYPE_CHECK;
-            this->children.push_back(std::make_unique<T>(std::move(node)));
+            this->children.push_back(detail::make_unique<T>(std::move(node)));
             return *this;
         }
 
