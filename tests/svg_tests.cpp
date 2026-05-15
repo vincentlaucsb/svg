@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+#include <catch2/catch.hpp>
 #include "svg.hpp"
 
 SVG::SVG two_circles(int x = 0, int y = 0, int r = 0);

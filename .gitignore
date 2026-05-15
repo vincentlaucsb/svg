@@ -1,5 +1,8 @@
 # CMake/IDE
+.idea/
+build*/
 cmake-build-debug/
+docs/
 .vs/
 
 # Compiled Object files

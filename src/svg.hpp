@@ -1,3 +1,34 @@
+/*
+   ____ __     ______
+  / ___|\ \   / / ___|
+  \___ \ \ \ / / |  _
+   ___) | \ V /| |_| |
+  |____/   \_/  \____|
+
+  SVG for C++ v0.1.0
+
+  Copyright (c) 2018-2026 Vincent La
+  SPDX-License-Identifier: MIT
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+*/
+
 /** @file */
 #pragma once
 #define PI 3.14159265
@@ -17,6 +48,7 @@
 #include <memory>
 #include <type_traits> // is_base_of
 #include <typeinfo>
+#include <utility>
 
 namespace SVG {
     /** @namespace SVG
@@ -39,6 +71,19 @@ namespace SVG {
     using Margins = QuadCoord;
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
+
+#if __cplusplus < 201402L
+    namespace detail {
+        template<typename T, typename... Args>
+        std::unique_ptr<T> make_unique(Args&&... args) {
+            return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+        }
+    }
+#else
+    namespace detail {
+        using std::make_unique;
+    }
+#endif
 
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
@@ -266,7 +311,7 @@ namespace SVG {
         T* add_child(Args&&... args) {
             /** Add an SVG element as a child and return a pointer to the element added */
             SVG_TYPE_CHECK;
-            this->children.push_back(std::make_unique<T>(std::forward<Args>(args)...));
+            this->children.push_back(detail::make_unique<T>(std::forward<Args>(args)...));
             return (T*)this->children.back().get();
         }
 
@@ -274,7 +319,7 @@ namespace SVG {
         Element& operator<<(T&& node) {
             /** Move an SVG element into this container */
             SVG_TYPE_CHECK;
-            this->children.push_back(std::make_unique<T>(std::move(node)));
+            this->children.push_back(detail::make_unique<T>(std::move(node)));
             return *this;
         }
 
