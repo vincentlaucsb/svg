@@ -341,8 +341,10 @@ namespace SVG {
             /** Return all immediate children of type T */
             SVG_TYPE_CHECK;
             std::vector<T*> ret;
-            for (auto& child : this->children)
-                if (typeid(*child) == typeid(T)) ret.push_back((T*)child.get());
+            for (auto& child : this->children) {
+                auto& t = *child;
+                if (typeid(t) == typeid(T)) ret.push_back((T*)child.get());
+            }
 
             return ret;
         }
