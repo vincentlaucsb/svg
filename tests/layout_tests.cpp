@@ -1,0 +1,43 @@
+#include <catch2/catch.hpp>
+#include "svg.hpp"
+#include "test_helpers.hpp"
+
+TEST_CASE("autoscale computes nested child bounds", "[layout]") {
+    SVG::SVG root;
+    auto line_container = root.add_child<SVG::Group>();
+    auto circ_container = root.add_child<SVG::Group>();
+    auto c1_ptr = circ_container->add_child<SVG::Circle>(-100, -100, 100);
+    auto c2_ptr = circ_container->add_child<SVG::Circle>(100, 100, 100);
+
+    line_container->add_child<SVG::Line>(0, 10, 0, 10);
+    line_container->add_child<SVG::Line>(0, 0, 0, 10);
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(c1_ptr->get_bbox().x1 == -200);
+    REQUIRE(c1_ptr->get_bbox().x2 == 0);
+    REQUIRE(c1_ptr->get_bbox().y1 == -200);
+    REQUIRE(c1_ptr->get_bbox().y2 == 0);
+
+    REQUIRE(c2_ptr->get_bbox().x1 == 0);
+    REQUIRE(c2_ptr->get_bbox().x2 == 200);
+    REQUIRE(c2_ptr->get_bbox().y1 == 0);
+    REQUIRE(c2_ptr->get_bbox().y2 == 200);
+
+    REQUIRE(root.attr["width"] == "400.0");
+    REQUIRE(root.attr["height"] == "400.0");
+    REQUIRE(root.attr["viewBox"] == "-200.0 -200.0 400.0 400.0");
+}
+
+TEST_CASE("merge combines SVG documents horizontally", "[layout]") {
+    auto s1 = two_circles(200, 200, 200);
+    auto s2 = two_circles(200, 200, 200);
+    auto merged = SVG::merge(s1, s2);
+
+    auto child_map = merged.get_children();
+    REQUIRE(child_map["svg"].size() == 2);
+    REQUIRE(child_map["g"].size() == 2);
+    REQUIRE(child_map["circle"].size() == 4);
+
+    REQUIRE(merged.width() == 840.0);
+    REQUIRE(merged.height() == 420.0);
+}

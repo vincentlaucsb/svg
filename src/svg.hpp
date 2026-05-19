@@ -37,6 +37,7 @@
 #define APPROX_EQUALS(x, y, tol) bool(abs(x - y) < tol)
 #include <iostream>
 #include <algorithm> // min, max
+#include <cctype>
 #include <fstream>   // ofstream
 #include <math.h>    // NAN
 #include <map>
@@ -46,6 +47,7 @@
 #include <sstream> // stringstream
 #include <iomanip> // setprecision
 #include <memory>
+#include <stdexcept>
 #include <type_traits> // is_base_of
 #include <typeinfo>
 #include <utility>
@@ -65,6 +67,7 @@ namespace SVG {
         double y2;
     };
 
+    /** A mapping of CSS selectors to their corresponding style attributes */
     using SelectorProperties = std::map<std::string, AttributeMap>;
     using SVGAttrib = std::map<std::string, std::string>;
     using Point = std::pair<double, double>;
@@ -93,6 +96,141 @@ namespace SVG {
     SVG frame_animate(std::vector<SVG>& frames, const double fps);
     SVG merge(SVG& left, SVG& right, const Margins& margins = DEFAULT_MARGINS);
     SVG merge(std::vector<SVG>& frames, const double width, const int max_frame_width);
+
+    /** @class ClassList
+     *  @brief Ordered token list for managing the class attribute
+     */
+    class ClassList {
+    public:
+        ClassList() = default;
+        explicit ClassList(std::string& value) : mutable_value_(&value), value_(&value) {}
+        explicit ClassList(const std::string& value) : value_(&value) {}
+
+        /** Return true when the class token exists */
+        bool contains(const std::string& token) const {
+            validate_token(token);
+            const auto values = tokens();
+            return std::find(values.begin(), values.end(), token) != values.end();
+        }
+
+        /** Add a class token if it does not already exist */
+        ClassList& add(const std::string& token) {
+            validate_token(token);
+            auto values = tokens();
+            if (std::find(values.begin(), values.end(), token) == values.end()) {
+                values.push_back(token);
+                write(values);
+            }
+            return *this;
+        }
+
+        /** Remove a class token if it exists */
+        ClassList& remove(const std::string& token) {
+            validate_token(token);
+            auto values = tokens();
+            const auto original_size = values.size();
+            values.erase(std::remove(values.begin(), values.end(), token), values.end());
+            if (values.size() != original_size) {
+                write(values);
+            }
+            return *this;
+        }
+
+        /** Add a missing token or remove an existing token, returning true when present */
+        bool toggle(const std::string& token) {
+            if (contains(token)) {
+                remove(token);
+                return false;
+            }
+
+            add(token);
+            return true;
+        }
+
+        /** Replace the class attribute with a whitespace-normalized token list */
+        ClassList& set(const std::string& class_names) {
+            write(parse(class_names));
+            return *this;
+        }
+
+        /** Remove all classes */
+        ClassList& clear() {
+            write({});
+            return *this;
+        }
+
+        /** Return normalized class text */
+        std::string str() const {
+            return join(tokens());
+        }
+
+        /** Return the current tokens in order */
+        std::vector<std::string> tokens() const {
+            return parse(value());
+        }
+
+    private:
+        static bool is_space(char ch) {
+            return std::isspace(static_cast<unsigned char>(ch)) != 0;
+        }
+
+        static void validate_token(const std::string& token) {
+            if (token.empty()) {
+                throw std::invalid_argument("class token cannot be empty");
+            }
+            if (std::find_if(token.begin(), token.end(), is_space) != token.end()) {
+                throw std::invalid_argument("class token cannot contain whitespace");
+            }
+        }
+
+        static std::vector<std::string> parse(const std::string& class_names) {
+            std::vector<std::string> result;
+            std::string token;
+            for (const auto ch : class_names) {
+                if (is_space(ch)) {
+                    if (!token.empty()) {
+                        if (std::find(result.begin(), result.end(), token) == result.end()) {
+                            result.push_back(token);
+                        }
+                        token.clear();
+                    }
+                    continue;
+                }
+                token.push_back(ch);
+            }
+            if (!token.empty() && std::find(result.begin(), result.end(), token) == result.end()) {
+                result.push_back(token);
+            }
+            return result;
+        }
+
+        static std::string join(const std::vector<std::string>& values) {
+            std::string result;
+            for (std::size_t i = 0; i < values.size(); ++i) {
+                if (i > 0) {
+                    result += ' ';
+                }
+                result += values[i];
+            }
+            return result;
+        }
+
+        const std::string& value() const {
+            static const std::string empty;
+            return value_ ? *value_ : empty;
+        }
+
+        void write(const std::vector<std::string>& values) {
+            if (!mutable_value_) {
+                throw std::logic_error("cannot mutate a const class list");
+            }
+            *mutable_value_ = join(values);
+            value_ = mutable_value_;
+        }
+
+        std::string* mutable_value_ = nullptr;
+        const std::string* value_ = nullptr;
+    };
 
     /** @namespace util
      *  @brief Various utility and mathematical functions
@@ -212,13 +350,22 @@ namespace SVG {
     class AttributeMap {
     public:
         struct AttrSetter {
-            AttrSetter(SVGAttrib::mapped_type& _attr) : attr(_attr) {};
+            AttrSetter(SVGAttrib::mapped_type& _attr, bool _normalize_class = false) :
+                    attr(_attr), normalize_class(_normalize_class) {};
             SVGAttrib::mapped_type& attr;
+            bool normalize_class = false;
 
             template<typename T>
             AttrSetter& operator<<(T value) {
                 attr += std::to_string(value);
+                normalize();
                 return *this;
+            }
+
+            void normalize() {
+                if (normalize_class) {
+                    ClassList(attr).set(attr);
+                }
             }
         };
 
@@ -228,40 +375,68 @@ namespace SVG {
 
         template<typename T>
         AttributeMap& set_attr(const std::string key, T value) {
-            this->attr[key] = std::to_string(value);
+            this->set_attr_value(key, std::to_string(value));
+            return *this;
+        }
+
+        /** Set multiple attributes at once */
+        AttributeMap& set_attrs(std::initializer_list<std::pair<std::string, std::string>> values) {
+            for (const auto& pair : values) {
+                this->set_attr_value(pair.first, pair.second);
+            }
+
             return *this;
         }
 
         AttrSetter set_attr(const std::string key) {
             if (this->attr.find(key) == this->attr.end()) this->attr[key] = "";
-            return AttrSetter(this->attr.at(key));
+            return AttrSetter(this->attr.at(key), key == "class");
         };
+
+        ClassList class_list() {
+            return ClassList(this->attr["class"]);
+        }
+
+        ClassList class_list() const {
+            const auto found = this->attr.find("class");
+            return found == this->attr.end() ? ClassList() : ClassList(found->second);
+        }
+
+    private:
+        void set_attr_value(const std::string& key, const std::string& value) {
+            if (key == "class") {
+                ClassList(this->attr[key]).set(value);
+                return;
+            }
+            this->attr[key] = value;
+        }
     };
 
     template<>
     inline AttributeMap::AttrSetter& AttributeMap::AttrSetter::operator<<(const char * value) {
         attr += value;
+        normalize();
         return *this;
     }
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
         /** Modify the attribute specified by key */
-        this->attr[key] = to_string(value);
+        this->set_attr_value(key, to_string(value));
         return *this;
     }
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const char * value) {
         /** Modify the attribute specified by key */
-        this->attr[key] = value;
+        this->set_attr_value(key, value);
         return *this;
     }
 
     template<>
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const std::string value) {
         /** Modify the attribute specified by key */
-        this->attr[key] = value;
+        this->set_attr_value(key, value);
         return *this;
     }
 
@@ -399,7 +574,7 @@ namespace SVG {
     
         for (auto& current: child_elems) {
             if ((current->attr.find("class") != current->attr.end())
-                && (current->attr.find("class")->second == clsname))
+                && current->class_list().contains(clsname))
                 ret.push_back(current);
         }
     
@@ -457,6 +632,7 @@ namespace SVG {
             Style() = default;
             using Element::Element;
             SelectorProperties css; /**< Basic CSS styling */
+            std::map<std::string, SelectorProperties> media_queries; /**< CSS media queries */
             std::map<std::string, SelectorProperties> keyframes; /**< CSS animations */
 
         protected:
@@ -464,10 +640,18 @@ namespace SVG {
             std::string tag() override { return "style"; };
         };
 
+        /**< Create an <svg> with specified attributes */
         SVG(SVGAttrib _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
-        ) : Shape(_attr) {}; /**< Create an <svg> with specified attributes */
+        ) : Shape(_attr) {};
+
+        /** Retrieve a handle corresponding to the given CSS selector */
         AttributeMap& style(const std::string& key) { return this->css->css[key]; }
+
+        /** Retrieve a handle corresponding to a selector within a CSS media query */
+        AttributeMap& media_style(const std::string& query, const std::string& key) {
+            return this->css->media_queries[query][key];
+        }
 
         std::map<std::string, AttributeMap>& keyframes(const std::string& key) {
             /** Add or modify an animation keyframe
@@ -749,12 +933,19 @@ namespace SVG {
         /** Create a CSS stylesheet */
         auto indent = std::string(indent_level, '\t');
 
-        if (!this->css.empty() || !this->keyframes.empty()) {
+        if (!this->css.empty() || !this->media_queries.empty() || !this->keyframes.empty()) {
             std::string ret = indent + "<style type=\"text/css\">\n" +
                 indent + "\t<![CDATA[\n";
 
             // Begin CSS stylesheet
             ret += to_string(this->css, indent_level);
+
+            // Media queries
+            for (auto& media : this->media_queries) {
+                ret += indent + "\t\t@media " + media.first + " {\n" +
+                    to_string(media.second, indent_level + 1) +
+                    indent + "\t\t" + "}\n";
+            }
 
             // Animation frames
             for (auto& anim : this->keyframes) {

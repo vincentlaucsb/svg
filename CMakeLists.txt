@@ -28,7 +28,15 @@ if(BUILD_TESTING)
     )
     FetchContent_MakeAvailable(Catch2)
 
-    add_executable(SVG_Test tests/svg_tests.cpp)
+    add_executable(SVG_Test
+        tests/test_main.cpp
+        tests/render_tests.cpp
+        tests/style_tests.cpp
+        tests/class_list_tests.cpp
+        tests/traversal_tests.cpp
+        tests/layout_tests.cpp
+        tests/geometry_tests.cpp
+    )
     target_link_libraries(SVG_Test PRIVATE svg Catch2::Catch2)
 
     add_test(NAME SVG_Test COMMAND SVG_Test)
