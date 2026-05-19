@@ -5,7 +5,7 @@
    ___) | \ V /| |_| |
   |____/   \_/  \____|
 
-  SVG for C++ v0.1.0
+  SVG for C++ v0.2.0
 
   Copyright (c) 2018-2026 Vincent La
   SPDX-License-Identifier: MIT
