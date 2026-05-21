@@ -1,0 +1,56 @@
+name: Coverage
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Ubuntu / GCC / coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-coverage
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=g++
+          -DCMAKE_CXX_STANDARD=14
+          -DCMAKE_CXX_STANDARD_REQUIRED=ON
+          -DCMAKE_CXX_EXTENSIONS=OFF
+          -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
+          -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+
+      - name: Build
+        run: cmake --build build-coverage --config Debug --parallel
+
+      - name: Test
+        run: ctest --test-dir build-coverage --build-config Debug --output-on-failure
+
+      - name: Capture coverage
+        run: |
+          lcov --capture --directory build-coverage --output-file coverage.info
+          lcov --remove coverage.info \
+            '*/build-coverage/*' \
+            '*/examples/*' \
+            '*/tests/*' \
+            '/usr/*' \
+            --output-file coverage.info
+          lcov --list coverage.info
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.info
+          fail_ci_if_error: true
