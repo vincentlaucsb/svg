@@ -27,6 +27,9 @@ TEST_CASE("Templated get_children filters descendants by exact type", "[traversa
     std::vector<SVG::Group*> groups = root.get_children<SVG::Group>();
     std::vector<SVG::Circle*> circles = root.get_children<SVG::Circle>();
 
+    REQUIRE(SVG::tag_name(SVG::Circle::static_kind) == "circle");
+    REQUIRE(groups.front()->kind() == SVG::ElementKind::Group);
+    REQUIRE(circles.front()->kind() == SVG::ElementKind::Circle);
     REQUIRE(containers.size() == 0);
     REQUIRE(groups.size() == 1);
     REQUIRE(circles.size() == 2);
@@ -39,6 +42,72 @@ TEST_CASE("get_element_by_id finds nested elements", "[traversal]") {
 
     REQUIRE(root.get_element_by_id("workout") == rect);
     REQUIRE(root.get_element_by_id("missing") == nullptr);
+
+    rect->id("sets");
+    REQUIRE(root.get_element_by_id("workout") == nullptr);
+    REQUIRE(root.get_element_by_id("sets") == rect);
+    REQUIRE(root.get_element_by_id<SVG::Rect>("sets") == rect);
+    REQUIRE(root.get_element_by_id<SVG::Circle>("sets") == nullptr);
+
+    rect->set_attr("id") << "volume";
+    REQUIRE(root.get_element_by_id("sets") == nullptr);
+    REQUIRE(root.get_element_by_id("volume") == rect);
+
+    rect->set_attr("id");
+    REQUIRE(rect->get_attr("id").empty());
+    REQUIRE(root.get_element_by_id("volume") == nullptr);
+
+    rect->set_attr("id", "reps");
+    REQUIRE(root.get_element_by_id("reps") == rect);
+
+    auto* other = group->add_child<SVG::Rect>();
+    REQUIRE_THROWS_AS(other->id("reps"), std::invalid_argument);
+}
+
+TEST_CASE("Elements expose their parent after add_child", "[traversal]") {
+    SVG::SVG root;
+    auto group = root.add_child<SVG::Group>();
+    auto rect = group->add_child<SVG::Rect>();
+
+    REQUIRE(root.parent() == nullptr);
+    REQUIRE(root.css->parent() == &root);
+    REQUIRE(group->parent() == &root);
+    REQUIRE(rect->parent() == group);
+}
+
+TEST_CASE("Moved subtrees update parent pointers", "[traversal]") {
+    SVG::SVG root;
+    SVG::Group group;
+    auto rect = group.add_child<SVG::Rect>();
+    REQUIRE(rect->parent() == &group);
+
+    root << std::move(group);
+
+    const auto groups = root.get_immediate_children<SVG::Group>();
+    REQUIRE(groups.size() == 1);
+    const auto moved_group = groups.front();
+    const auto rects = moved_group->get_immediate_children<SVG::Rect>();
+    REQUIRE(rects.size() == 1);
+    REQUIRE(moved_group->parent() == &root);
+    REQUIRE(rects.front()->parent() == moved_group);
+}
+
+TEST_CASE("Moved subtrees register ids with their new SVG root", "[traversal]") {
+    SVG::Group group;
+    group.add_child<SVG::Rect>("detached");
+
+    SVG::SVG root;
+    REQUIRE(root.get_element_by_id("detached") == nullptr);
+
+    root << std::move(group);
+
+    auto* rect = root.get_element_by_id<SVG::Rect>("detached");
+    REQUIRE(rect != nullptr);
+    REQUIRE(root.get_element_by_id<SVG::Circle>("detached") == nullptr);
+
+    rect->id("attached");
+    REQUIRE(root.get_element_by_id("detached") == nullptr);
+    REQUIRE(root.get_element_by_id("attached") == rect);
 }
 
 TEST_CASE("get_elements_by_class matches tokenized classes", "[traversal]") {

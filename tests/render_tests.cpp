@@ -2,6 +2,18 @@
 #include "svg.hpp"
 #include "test_helpers.hpp"
 
+namespace {
+    class CustomFilter : public SVG::Element {
+    public:
+        static constexpr SVG::ElementKind static_kind = SVG::ElementKind::Custom;
+        using SVG::Element::Element;
+        SVG::ElementKind kind() const override { return static_kind; }
+
+    protected:
+        std::string tag() override { return "feGaussianBlur"; }
+    };
+}
+
 TEST_CASE("Elements serialize with proper indentation", "[render]") {
     SVG::SVG root;
     root.add_child<SVG::Circle>();
@@ -39,4 +51,73 @@ TEST_CASE("Text serializes content between tags", "[render]") {
     root.add_child<SVG::Text>(10, 20, "Workout");
 
     REQUIRE(std::string(root).find("<text x=\"10.0\" y=\"20.0\">Workout</text>") != std::string::npos);
+}
+
+TEST_CASE("XML-sensitive values are escaped when rendering", "[render]") {
+    SVG::SVG root({{"xmlns", "http://www.w3.org/2000/svg"},
+                   {"aria-label", "A & \"B\" <C> 'D'"}});
+    auto* group = root.add_child<SVG::Group>();
+    group->set_attr("data-label", "nested & \"quoted\"");
+    group->add_child<SVG::Text>(10, 20, "A & B < C");
+
+    const std::string svg = root;
+
+    REQUIRE(svg.find("aria-label=\"A &amp; &quot;B&quot; &lt;C&gt; &apos;D&apos;\"") !=
+            std::string::npos);
+    REQUIRE(svg.find("data-label=\"nested &amp; &quot;quoted&quot;\"") != std::string::npos);
+    REQUIRE(svg.find(">A &amp; B &lt; C</text>") != std::string::npos);
+}
+
+TEST_CASE("Symbols and uses serialize reusable marks", "[render]") {
+    SVG::SVG root;
+    auto* symbol = root.defs()->symbol("dot");
+    REQUIRE(root.defs()->symbol("dot") == symbol);
+    REQUIRE(root.get_element_by_id<SVG::Symbol>("dot") == symbol);
+
+    symbol->set_attr("viewBox", "0 0 6.4 6.4");
+    symbol->add_child<SVG::Circle>(3.2, 3.2, 3.2);
+
+    auto* use = root.add_child<SVG::Use>(symbol->use(10, 20, 6.4, 6.4));
+    use->class_list().add("marker");
+
+    const std::string svg = root;
+
+    REQUIRE(svg.find("<defs>") != std::string::npos);
+    REQUIRE(svg.find("<defs>") < svg.find("<use"));
+    REQUIRE(svg.find("<symbol id=\"dot\" viewBox=\"0 0 6.4 6.4\">") != std::string::npos);
+    REQUIRE(svg.find("<circle cx=\"3.2\" cy=\"3.2\" r=\"3.2\" />") != std::string::npos);
+    REQUIRE(svg.find("<use class=\"marker\" height=\"6.4\" href=\"#dot\" width=\"6.4\" x=\"10.0\" y=\"20.0\" />") !=
+            std::string::npos);
+}
+
+TEST_CASE("Defs serialize after root styles", "[render]") {
+    SVG::SVG root;
+    auto* line = root.add_child<SVG::Line>(0, 0, 10, 10);
+    root.style(".line").set_attr("stroke", "black");
+
+    auto* symbol = root.defs()->symbol("dot");
+    symbol->add_child<SVG::Circle>(3.2, 3.2, 3.2);
+    line->class_list().add("line");
+
+    const std::string svg = root;
+    const auto style_pos = svg.find("<style");
+    const auto defs_pos = svg.find("<defs>");
+    const auto line_pos = svg.find("<line");
+
+    REQUIRE(style_pos != std::string::npos);
+    REQUIRE(defs_pos != std::string::npos);
+    REQUIRE(line_pos != std::string::npos);
+    REQUIRE(style_pos < defs_pos);
+    REQUIRE(defs_pos < line_pos);
+}
+
+TEST_CASE("Custom elements serialize custom tags and support untyped lookup", "[render]") {
+    SVG::SVG root;
+    auto* blur = root.add_child<CustomFilter>("blur");
+    blur->set_attr("stdDeviation", "2");
+
+    const std::string svg = root;
+
+    REQUIRE(root.get_element_by_id("blur") == blur);
+    REQUIRE(svg.find("<feGaussianBlur id=\"blur\" stdDeviation=\"2\" />") != std::string::npos);
 }

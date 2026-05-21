@@ -6,18 +6,18 @@ TEST_CASE("ClassList manages class tokens", "[class-list]") {
     auto circ = root.add_child<SVG::Circle>();
 
     circ->class_list().add("chart").add("selected").add("chart");
-    REQUIRE(circ->attr["class"] == "chart selected");
+    REQUIRE(circ->get_attr("class") == "chart selected");
     REQUIRE(circ->class_list().contains("chart"));
     REQUIRE(circ->class_list().contains("selected"));
 
     circ->class_list().remove("chart");
-    REQUIRE(circ->attr["class"] == "selected");
+    REQUIRE(circ->get_attr("class") == "selected");
     REQUIRE_FALSE(circ->class_list().contains("chart"));
 
     REQUIRE(circ->class_list().toggle("hidden"));
-    REQUIRE(circ->attr["class"] == "selected hidden");
+    REQUIRE(circ->get_attr("class") == "selected hidden");
     REQUIRE_FALSE(circ->class_list().toggle("hidden"));
-    REQUIRE(circ->attr["class"] == "selected");
+    REQUIRE(circ->get_attr("class") == "selected");
 }
 
 TEST_CASE("ClassList normalizes class text", "[class-list]") {
@@ -26,7 +26,7 @@ TEST_CASE("ClassList normalizes class text", "[class-list]") {
 
     group->class_list().set(" chart   primary chart ");
 
-    REQUIRE(group->attr["class"] == "chart primary");
+    REQUIRE(group->get_attr("class") == "chart primary");
     REQUIRE(group->class_list().str() == "chart primary");
     REQUIRE(group->class_list().tokens() == std::vector<std::string>{ "chart", "primary" });
 }
@@ -50,8 +50,8 @@ TEST_CASE("Class attributes normalize through set_attr APIs", "[class-list]") {
     first->set_attr("class", " chart   primary chart ");
     second->set_attr("class") << "chart" << " muted";
 
-    REQUIRE(first->attr["class"] == "chart primary");
-    REQUIRE(second->attr["class"] == "chart muted");
+    REQUIRE(first->get_attr("class") == "chart primary");
+    REQUIRE(second->get_attr("class") == "chart muted");
 
     const auto matches = root.get_elements_by_class("chart");
     REQUIRE(matches.size() == 2);
@@ -68,7 +68,39 @@ TEST_CASE("set_attrs applies multiple attributes and normalizes class values", "
         { "data-date", "2026-05-18" }
     });
 
-    REQUIRE(rect.attr["class"] == "workout completed");
-    REQUIRE(rect.attr["fill"] == "var(--bar-fill)");
-    REQUIRE(rect.attr["data-date"] == "2026-05-18");
+    REQUIRE(rect.get_attr("class") == "workout completed");
+    REQUIRE(rect.get_attr("fill") == "var(--bar-fill)");
+    REQUIRE(rect.get_attr("data-date") == "2026-05-18");
+    REQUIRE(rect.attrs().size() == 3);
+}
+
+TEST_CASE("TransformList appends transform functions in order", "[transform-list]") {
+    SVG::Text label(10, 20, "Workout");
+
+    label.transform()
+        .translate(5, 6)
+        .rotate(-45, 10, 20)
+        .scale(1.5)
+        .skew_x(12);
+
+    REQUIRE(label.get_attr("transform") ==
+            "translate(5.0 6.0) rotate(-45.0 10.0 20.0) scale(1.5) skewX(12.0)");
+}
+
+TEST_CASE("TransformList can replace clear and inspect transform values", "[transform-list]") {
+    SVG::Group group;
+
+    group.transform_list().set("inherit");
+    REQUIRE(group.transform_list().str() == "inherit");
+    REQUIRE_THROWS_AS(group.transform_list().rotate(15), std::logic_error);
+
+    group.transform_list().set("none").translate(10);
+    REQUIRE(group.get_attr("transform") == "translate(10.0)");
+
+    group.transform_list().clear();
+    REQUIRE(group.get_attr("transform").empty());
+
+    const SVG::Group& const_group = group;
+    REQUIRE(const_group.transform_list().str().empty());
+    REQUIRE_THROWS_AS(const_group.transform_list().scale(2), std::logic_error);
 }

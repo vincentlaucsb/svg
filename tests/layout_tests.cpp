@@ -23,9 +23,9 @@ TEST_CASE("autoscale computes nested child bounds", "[layout]") {
     REQUIRE(c2_ptr->get_bbox().y1 == 0);
     REQUIRE(c2_ptr->get_bbox().y2 == 200);
 
-    REQUIRE(root.attr["width"] == "400.0");
-    REQUIRE(root.attr["height"] == "400.0");
-    REQUIRE(root.attr["viewBox"] == "-200.0 -200.0 400.0 400.0");
+    REQUIRE(root.get_attr("width") == "400.0");
+    REQUIRE(root.get_attr("height") == "400.0");
+    REQUIRE(root.get_attr("viewBox") == "-200.0 -200.0 400.0 400.0");
 }
 
 TEST_CASE("merge combines SVG documents horizontally", "[layout]") {

@@ -5,7 +5,7 @@
    ___) | \ V /| |_| |
   |____/   \_/  \____|
 
-  SVG for C++ v0.2.0
+  SVG for C++ v0.3.0
 
   Copyright (c) 2018-2026 Vincent La
   SPDX-License-Identifier: MIT
@@ -39,6 +39,7 @@
 #include <algorithm> // min, max
 #include <cctype>
 #include <fstream>   // ofstream
+#include <functional>
 #include <math.h>    // NAN
 #include <map>
 #include <deque>
@@ -49,7 +50,6 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits> // is_base_of
-#include <typeinfo>
 #include <utility>
 
 namespace SVG {
@@ -59,6 +59,43 @@ namespace SVG {
     class AttributeMap;
     class SVG;
     class Shape;
+    class Symbol;
+    class Use;
+
+    enum class ElementKind {
+        Custom,
+        Defs,
+        Symbol,
+        Use,
+        SVG,
+        Style,
+        Path,
+        Text,
+        Group,
+        Line,
+        Rect,
+        Circle,
+        Polygon
+    };
+
+    inline std::string tag_name(ElementKind kind) {
+        switch (kind) {
+            case ElementKind::Defs: return "defs";
+            case ElementKind::Symbol: return "symbol";
+            case ElementKind::Use: return "use";
+            case ElementKind::SVG: return "svg";
+            case ElementKind::Style: return "style";
+            case ElementKind::Path: return "path";
+            case ElementKind::Text: return "text";
+            case ElementKind::Group: return "g";
+            case ElementKind::Line: return "line";
+            case ElementKind::Rect: return "rect";
+            case ElementKind::Circle: return "circle";
+            case ElementKind::Polygon: return "polygon";
+            case ElementKind::Custom: return "";
+        }
+        return "";
+    }
 
     struct QuadCoord {
         double x1;
@@ -91,6 +128,7 @@ namespace SVG {
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
     inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level=0);
+    inline std::string escape_xml(const std::string& text);
 
     std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
     SVG frame_animate(std::vector<SVG>& frames, const double fps);
@@ -232,6 +270,116 @@ namespace SVG {
         const std::string* value_ = nullptr;
     };
 
+    /** @class TransformList
+     *  @brief Ordered function list for managing the transform attribute
+     */
+    class TransformList {
+    public:
+        TransformList() = default;
+        explicit TransformList(std::string& value) : mutable_value_(&value), value_(&value) {}
+        explicit TransformList(const std::string& value) : value_(&value) {}
+
+        /** Append a raw transform function or function list */
+        TransformList& append(const std::string& transform) {
+            validate_appendable();
+            if (transform.empty()) {
+                throw std::invalid_argument("transform cannot be empty");
+            }
+
+            if (str().empty() || str() == "none") {
+                write(transform);
+            } else {
+                write(str() + " " + transform);
+            }
+            return *this;
+        }
+
+        /** Replace the transform attribute */
+        TransformList& set(const std::string& transform) {
+            write(transform);
+            return *this;
+        }
+
+        /** Remove all transforms */
+        TransformList& clear() {
+            write("");
+            return *this;
+        }
+
+        TransformList& matrix(double a, double b, double c, double d, double e, double f) {
+            std::stringstream ss;
+            ss << "matrix(" << to_string(a) << " " << to_string(b) << " " << to_string(c)
+               << " " << to_string(d) << " " << to_string(e) << " " << to_string(f) << ")";
+            return append(ss.str());
+        }
+
+        TransformList& translate(double x) {
+            return append("translate(" + to_string(x) + ")");
+        }
+
+        TransformList& translate(double x, double y) {
+            return append("translate(" + to_string(x) + " " + to_string(y) + ")");
+        }
+
+        TransformList& scale(double factor) {
+            return append("scale(" + to_string(factor) + ")");
+        }
+
+        TransformList& scale(double x, double y) {
+            return append("scale(" + to_string(x) + " " + to_string(y) + ")");
+        }
+
+        TransformList& rotate(double degrees) {
+            return append("rotate(" + to_string(degrees) + ")");
+        }
+
+        TransformList& rotate(double degrees, double cx, double cy) {
+            return append("rotate(" + to_string(degrees) + " " + to_string(cx) + " " +
+                          to_string(cy) + ")");
+        }
+
+        TransformList& skew_x(double degrees) {
+            return append("skewX(" + to_string(degrees) + ")");
+        }
+
+        TransformList& skew_y(double degrees) {
+            return append("skewY(" + to_string(degrees) + ")");
+        }
+
+        /** Return the current transform text */
+        std::string str() const {
+            return value();
+        }
+
+    private:
+        static bool is_keyword(const std::string& transform) {
+            return transform == "inherit" || transform == "initial" || transform == "revert" ||
+                   transform == "revert-layer" || transform == "unset";
+        }
+
+        const std::string& value() const {
+            static const std::string empty;
+            return value_ ? *value_ : empty;
+        }
+
+        void validate_appendable() const {
+            if (is_keyword(value())) {
+                throw std::logic_error("cannot append transform functions to a transform keyword");
+            }
+        }
+
+        void write(const std::string& value) {
+            if (!mutable_value_) {
+                throw std::logic_error("cannot mutate a const transform list");
+            }
+            *mutable_value_ = value;
+            value_ = mutable_value_;
+        }
+
+        std::string* mutable_value_ = nullptr;
+        const std::string* value_ = nullptr;
+    };
+
     /** @namespace util
      *  @brief Various utility and mathematical functions
      */
@@ -344,34 +492,87 @@ namespace SVG {
         return to_string(point.first) + "," + to_string(point.second);
     }
 
+    inline std::string escape_xml(const std::string& text) {
+        std::string out;
+        out.reserve(text.size());
+        for (const char ch : text) {
+            switch (ch) {
+                case '&':
+                    out += "&amp;";
+                    break;
+                case '<':
+                    out += "&lt;";
+                    break;
+                case '>':
+                    out += "&gt;";
+                    break;
+                case '"':
+                    out += "&quot;";
+                    break;
+                case '\'':
+                    out += "&apos;";
+                    break;
+                default:
+                    out.push_back(ch);
+                    break;
+            }
+        }
+        return out;
+    }
+
     /** @class AttributeMap
      *  @brief Base class for anything that has attributes (e.g. SVG elements, CSS stylesheets)
      */
     class AttributeMap {
     public:
         struct AttrSetter {
-            AttrSetter(SVGAttrib::mapped_type& _attr, bool _normalize_class = false) :
-                    attr(_attr), normalize_class(_normalize_class) {};
-            SVGAttrib::mapped_type& attr;
-            bool normalize_class = false;
+            AttrSetter(SVGAttrib::mapped_type& _attr,
+                       bool _normalize_class = false,
+                       std::function<void(const std::string&)> _on_update = {}) :
+                    attr_(_attr), normalize_class_(_normalize_class), on_update_(_on_update) {};
 
             template<typename T>
             AttrSetter& operator<<(T value) {
-                attr += std::to_string(value);
+                attr_ += std::to_string(value);
                 normalize();
+                notify();
                 return *this;
             }
 
+        private:
             void normalize() {
-                if (normalize_class) {
-                    ClassList(attr).set(attr);
+                if (normalize_class_) {
+                    ClassList(attr_).set(attr_);
                 }
             }
+
+            void notify() {
+                if (on_update_) {
+                    on_update_(attr_);
+                }
+            }
+
+            SVGAttrib::mapped_type& attr_;
+            bool normalize_class_ = false;
+            std::function<void(const std::string&)> on_update_;
         };
 
         AttributeMap() = default;
-        AttributeMap(SVGAttrib _attr) : attr(_attr) {};
-        SVGAttrib attr;
+        virtual ~AttributeMap() = default;
+        AttributeMap(SVGAttrib _attr) : attr_(std::move(_attr)) {};
+
+        const SVGAttrib& attrs() const {
+            return this->attr_;
+        }
+
+        bool has_attr(const std::string& key) const {
+            return this->attr_.find(key) != this->attr_.end();
+        }
+
+        std::string get_attr(const std::string& key, const std::string& fallback = "") const {
+            const auto found = this->attr_.find(key);
+            return found == this->attr_.end() ? fallback : found->second;
+        }
 
         template<typename T>
         AttributeMap& set_attr(const std::string key, T value) {
@@ -389,33 +590,70 @@ namespace SVG {
         }
 
         AttrSetter set_attr(const std::string key) {
-            if (this->attr.find(key) == this->attr.end()) this->attr[key] = "";
-            return AttrSetter(this->attr.at(key), key == "class");
+            return this->make_attr_setter(key);
         };
 
         ClassList class_list() {
-            return ClassList(this->attr["class"]);
+            return ClassList(this->attr_["class"]);
         }
 
         ClassList class_list() const {
-            const auto found = this->attr.find("class");
-            return found == this->attr.end() ? ClassList() : ClassList(found->second);
+            const auto found = this->attr_.find("class");
+            return found == this->attr_.end() ? ClassList() : ClassList(found->second);
+        }
+
+        TransformList transform_list() {
+            return TransformList(this->attr_["transform"]);
+        }
+
+        TransformList transform_list() const {
+            const auto found = this->attr_.find("transform");
+            return found == this->attr_.end() ? TransformList() : TransformList(found->second);
+        }
+
+        TransformList transform() {
+            return transform_list();
+        }
+
+        TransformList transform() const {
+            return transform_list();
+        }
+
+    protected:
+        virtual void set_attr_value(const std::string& key, const std::string& value) {
+            if (key == "class") {
+                ClassList(this->attr_[key]).set(value);
+                return;
+            }
+            this->attr_[key] = value;
+        }
+
+        virtual AttrSetter make_attr_setter(const std::string& key) {
+            if (this->attr_.find(key) == this->attr_.end()) this->attr_[key] = "";
+            return AttrSetter(this->attr_.at(key), key == "class");
+        }
+
+        SVGAttrib& mutable_attrs() {
+            return this->attr_;
         }
 
     private:
-        void set_attr_value(const std::string& key, const std::string& value) {
-            if (key == "class") {
-                ClassList(this->attr[key]).set(value);
-                return;
-            }
-            this->attr[key] = value;
-        }
+        SVGAttrib attr_;
     };
 
     template<>
     inline AttributeMap::AttrSetter& AttributeMap::AttrSetter::operator<<(const char * value) {
-        attr += value;
+        attr_ += value;
         normalize();
+        notify();
+        return *this;
+    }
+
+    template<>
+    inline AttributeMap::AttrSetter& AttributeMap::AttrSetter::operator<<(const std::string value) {
+        attr_ += value;
+        normalize();
+        notify();
         return *this;
     }
 
@@ -471,9 +709,26 @@ namespace SVG {
         Element() = default;
         virtual ~Element() = default;
         Element(const Element& other) = delete; // No copy constructor
-        Element(Element&& other) = default; // Move constructor
+        Element(Element&& other) noexcept :
+                AttributeMap(std::move(other)),
+                children(std::move(other.children)),
+                parent_(nullptr),
+                owner_(nullptr),
+                indexed_id_() {
+            reparent_children();
+        }
         Element& operator=(const Element&) = delete; // No copy assignment
-        Element& operator=(Element&& other) = default;
+        Element& operator=(Element&& other) noexcept {
+            if (this != &other) {
+                AttributeMap::operator=(std::move(other));
+                children = std::move(other.children);
+                parent_ = nullptr;
+                owner_ = nullptr;
+                indexed_id_.clear();
+                reparent_children();
+            }
+            return *this;
+        }
 
         Element(const char* id) : AttributeMap(
             SVGAttrib({ { "id", id } })) {};
@@ -486,15 +741,16 @@ namespace SVG {
         T* add_child(Args&&... args) {
             /** Add an SVG element as a child and return a pointer to the element added */
             SVG_TYPE_CHECK;
-            this->children.push_back(detail::make_unique<T>(std::forward<Args>(args)...));
-            return (T*)this->children.back().get();
+            auto child = detail::make_unique<T>(std::forward<Args>(args)...);
+            return static_cast<T*>(this->insert_child(std::move(child), this->children.end()));
         }
 
         template<typename T>
         Element& operator<<(T&& node) {
             /** Move an SVG element into this container */
             SVG_TYPE_CHECK;
-            this->children.push_back(detail::make_unique<T>(std::move(node)));
+            auto child = detail::make_unique<T>(std::move(node));
+            this->insert_child(std::move(child), this->children.end());
             return *this;
         }
 
@@ -506,7 +762,7 @@ namespace SVG {
             auto child_elems = this->get_children_helper();
             
             for (auto& child: child_elems)
-                if (typeid(*child) == typeid(T)) ret.push_back((T*)child);
+                if (child->kind() == T::static_kind) ret.push_back(static_cast<T*>(child));
 
             return ret;
         }
@@ -517,8 +773,7 @@ namespace SVG {
             SVG_TYPE_CHECK;
             std::vector<T*> ret;
             for (auto& child : this->children) {
-                auto& t = *child;
-                if (typeid(t) == typeid(T)) ret.push_back((T*)child.get());
+                if (child->kind() == T::static_kind) ret.push_back(static_cast<T*>(child.get()));
             }
 
             return ret;
@@ -526,6 +781,10 @@ namespace SVG {
 
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
+        const Element* parent() const { return parent_; }
+        virtual ElementKind kind() const = 0;
+        Element& id(const std::string& value);
+        std::string id() const;
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
         void autoscale(const double margin);
         virtual BoundingBox get_bbox();
@@ -533,20 +792,58 @@ namespace SVG {
 
     protected:
         std::vector<std::unique_ptr<Element>> children; /** Smart pointers to child elements */
+        using ChildIterator = std::vector<std::unique_ptr<Element>>::iterator;
         std::vector<Element*> get_children_helper();
         void get_bbox(Element::BoundingBox&);
         virtual std::string svg_to_string(const size_t indent_level); /** SVG string corresponding to this element */
-        virtual std::string tag() = 0; /** The SVG tag of this element */
+        virtual std::string tag() { return tag_name(this->kind()); } /** The SVG tag of this element */
+
+        void set_attr_value(const std::string& key, const std::string& value) override;
+        AttrSetter make_attr_setter(const std::string& key) override;
+        SVG* owner_svg();
+        const SVG* owner_svg() const;
+        void set_owner_svg(SVG* owner);
+        void register_subtree_ids();
+        void unregister_subtree_ids();
+        void register_own_id();
+        void unregister_own_id();
+
+        Element* insert_child(std::unique_ptr<Element> child, ChildIterator position) {
+            child->parent_ = this;
+            child->set_owner_svg(this->owner_svg());
+            try {
+                child->register_subtree_ids();
+            } catch (...) {
+                child->unregister_subtree_ids();
+                child->set_owner_svg(nullptr);
+                child->parent_ = nullptr;
+                throw;
+            }
+            return children.insert(position, std::move(child))->get();
+        }
+
+        void reparent_children() {
+            for (auto& child : children) {
+                child->parent_ = this;
+                child->set_owner_svg(this->owner_);
+                child->reparent_children();
+            }
+        }
 
         double find_numeric(const std::string& key) {
             /** Return the numeric attribute (if it exists) or NAN
              *
              *  @param[in] key Name of the attribute
              */
-            if (attr.find(key) != attr.end())
-                return std::stof(attr[key]);
+            if (this->has_attr(key))
+                return std::stof(this->get_attr(key));
             return NAN;
         }
+
+    private:
+        Element* parent_ = nullptr;
+        SVG* owner_ = nullptr;
+        std::string indexed_id_;
     };
 
     template<>
@@ -561,8 +858,7 @@ namespace SVG {
         /** Return the SVG element that has a certain id */
         auto child_elems = this->get_children_helper();
         for (auto& current: child_elems)
-            if (current->attr.find("id") != current->attr.end() && 
-                current->attr.find("id")->second == id) return current;
+            if (current->id() == id) return current;
         
         return nullptr;
     }
@@ -573,7 +869,7 @@ namespace SVG {
         auto child_elems = this->get_children_helper();
     
         for (auto& current: child_elems) {
-            if ((current->attr.find("class") != current->attr.end())
+            if (current->has_attr("class")
                 && current->class_list().contains(clsname))
                 ret.push_back(current);
         }
@@ -625,25 +921,110 @@ namespace SVG {
         }
     };
 
+    class Defs : public Element {
+    public:
+        static constexpr ElementKind static_kind = ElementKind::Defs;
+        using Element::Element;
+        ElementKind kind() const override { return static_kind; }
+        Symbol* symbol(std::string id);
+    };
+
+    class Symbol : public Element {
+    public:
+        static constexpr ElementKind static_kind = ElementKind::Symbol;
+        Symbol() = default;
+        using Element::Element;
+
+        explicit Symbol(std::string id) {
+            this->id(id);
+        }
+
+        std::string href() const;
+        ElementKind kind() const override { return static_kind; }
+        Use use(double x, double y) const;
+        Use use(double x, double y, double width, double height) const;
+    };
+
+    class Use : public Shape {
+    public:
+        static constexpr ElementKind static_kind = ElementKind::Use;
+        Use() = default;
+        using Shape::Shape;
+
+        explicit Use(std::string href) {
+            set_attr("href", std::move(href));
+        }
+
+        Use(std::string href, double x, double y) : Use(std::move(href)) {
+            set_attr("x", x);
+            set_attr("y", y);
+        }
+
+        Use(std::string href, double x, double y, double width, double height) :
+                Use(std::move(href), x, y) {
+            set_attr("width", width);
+            set_attr("height", height);
+        }
+
+        Use& xlink_href(std::string href) {
+            set_attr("xlink:href", std::move(href));
+            return *this;
+        }
+        ElementKind kind() const override { return static_kind; }
+    };
+
     class SVG : public Shape {
+        friend class Element;
+
+        std::map<std::string, Element*> id_index_;
+        Defs* defs_ = nullptr;
+
     public:
         class Style : public Element {
         public:
+            static constexpr ElementKind static_kind = ElementKind::Style;
             Style() = default;
             using Element::Element;
             SelectorProperties css; /**< Basic CSS styling */
             std::map<std::string, SelectorProperties> media_queries; /**< CSS media queries */
             std::map<std::string, SelectorProperties> keyframes; /**< CSS animations */
+            ElementKind kind() const override { return static_kind; }
 
         protected:
             std::string svg_to_string(const size_t) override;
-            std::string tag() override { return "style"; };
         };
 
         /**< Create an <svg> with specified attributes */
+        static constexpr ElementKind static_kind = ElementKind::SVG;
         SVG(SVGAttrib _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
-        ) : Shape(_attr) {};
+        ) : Shape(_attr) {
+            set_owner_svg(this);
+            rebuild_id_index();
+        };
+
+        SVG(SVG&& other) noexcept :
+                Shape(std::move(other)),
+                id_index_(std::move(other.id_index_)),
+                defs_(nullptr),
+                css(nullptr) {
+            refresh_special_children();
+            set_owner_svg(this);
+            rebuild_id_index();
+        }
+
+        SVG& operator=(SVG&& other) noexcept {
+            if (this != &other) {
+                Shape::operator=(std::move(other));
+                id_index_ = std::move(other.id_index_);
+                defs_ = nullptr;
+                css = nullptr;
+                refresh_special_children();
+                set_owner_svg(this);
+                rebuild_id_index();
+            }
+            return *this;
+        }
 
         /** Retrieve a handle corresponding to the given CSS selector */
         AttributeMap& style(const std::string& key) { return this->css->css[key]; }
@@ -662,22 +1043,233 @@ namespace SVG {
             return this->css->keyframes[key];
         }
 
+        Defs* defs() {
+            if (!this->defs_) this->defs_ = this->add_child<Defs>();
+            return this->defs_;
+        }
+
+        template<typename T, typename... Args>
+        typename std::enable_if<!std::is_same<T, Defs>::value, T*>::type add_child(Args&&... args) {
+            return Element::add_child<T>(std::forward<Args>(args)...);
+        }
+
+        template<typename T, typename... Args>
+        typename std::enable_if<std::is_same<T, Defs>::value, T*>::type add_child(Args&&... args) {
+            if (this->defs_) return this->defs_;
+
+            auto child = detail::make_unique<T>(std::forward<Args>(args)...);
+            auto* inserted = static_cast<T*>(
+                this->insert_child(std::move(child), this->defs_insert_position()));
+            this->defs_ = inserted;
+            return inserted;
+        }
+
+        Element* get_element_by_id(const std::string& id) {
+            const auto found = this->id_index_.find(id);
+            return found == this->id_index_.end() ? nullptr : found->second;
+        }
+
+        template<typename T>
+        T* get_element_by_id(const std::string& id) {
+            SVG_TYPE_CHECK;
+            auto* element = this->get_element_by_id(id);
+            if (!element || element->kind() != T::static_kind) return nullptr;
+            return static_cast<T*>(element);
+        }
+
         Style* css = this->add_child<Style>(); /**< This item's associated CSS stylesheet */
+        ElementKind kind() const override { return static_kind; }
 
     protected:
-        std::string tag() override { return "svg"; }
+
+    private:
+        void refresh_special_children() {
+            this->css = nullptr;
+            this->defs_ = nullptr;
+            for (auto& child : this->children) {
+                if (child->kind() == Style::static_kind) {
+                    this->css = static_cast<Style*>(child.get());
+                } else if (child->kind() == Defs::static_kind) {
+                    this->defs_ = static_cast<Defs*>(child.get());
+                }
+            }
+        }
+
+        void register_id(Element& element, const std::string& id) {
+            if (id.empty()) return;
+            const auto found = this->id_index_.find(id);
+            if (found != this->id_index_.end() && found->second != &element) {
+                throw std::invalid_argument("Duplicate SVG element id: " + id);
+            }
+            this->id_index_[id] = &element;
+        }
+
+        void unregister_id(Element& element, const std::string& id) {
+            if (id.empty()) return;
+            const auto found = this->id_index_.find(id);
+            if (found != this->id_index_.end() && found->second == &element) {
+                this->id_index_.erase(found);
+            }
+        }
+
+        void rebuild_id_index() {
+            this->id_index_.clear();
+            this->register_subtree_ids();
+        }
+
+        ChildIterator defs_insert_position() {
+            if (!this->css) return this->children.begin();
+
+            for (auto it = this->children.begin(); it != this->children.end(); ++it) {
+                if (it->get() == this->css) return it + 1;
+            }
+            return this->children.begin();
+        }
+
     };
+
+    inline SVG* Element::owner_svg() {
+        return this->owner_;
+    }
+
+    inline const SVG* Element::owner_svg() const {
+        return this->owner_;
+    }
+
+    inline void Element::set_owner_svg(SVG* owner) {
+        this->owner_ = owner;
+        for (auto& child : this->children) {
+            child->set_owner_svg(owner);
+        }
+    }
+
+    inline Element& Element::id(const std::string& value) {
+        const auto old_indexed_id = this->indexed_id_;
+        auto* root = this->owner_svg();
+
+        if (value.empty()) {
+            if (root && !old_indexed_id.empty()) {
+                root->unregister_id(*this, old_indexed_id);
+            }
+            this->mutable_attrs().erase("id");
+            this->indexed_id_.clear();
+            return *this;
+        }
+
+        if (root && old_indexed_id != value) {
+            root->register_id(*this, value);
+        }
+        if (root && !old_indexed_id.empty() && old_indexed_id != value) {
+            root->unregister_id(*this, old_indexed_id);
+        }
+
+        this->mutable_attrs()["id"] = value;
+        this->indexed_id_ = root ? value : "";
+        return *this;
+    }
+
+    inline std::string Element::id() const {
+        return this->get_attr("id");
+    }
+
+    inline void Element::set_attr_value(const std::string& key, const std::string& value) {
+        if (key == "id") {
+            this->id(value);
+            return;
+        }
+        AttributeMap::set_attr_value(key, value);
+    }
+
+    inline AttributeMap::AttrSetter Element::make_attr_setter(const std::string& key) {
+        if (key != "id") {
+            return AttributeMap::make_attr_setter(key);
+        }
+
+        this->id("");
+        this->mutable_attrs()[key] = "";
+        return AttrSetter(this->mutable_attrs().at(key), false, [this](const std::string& value) {
+            const auto previous = this->indexed_id_;
+            try {
+                this->id(value);
+            } catch (...) {
+                if (previous.empty()) {
+                    this->mutable_attrs().erase("id");
+                } else {
+                    this->mutable_attrs()["id"] = previous;
+                }
+                throw;
+            }
+        });
+    }
+
+    inline void Element::register_subtree_ids() {
+        this->register_own_id();
+        for (auto& child : this->children) {
+            child->register_subtree_ids();
+        }
+    }
+
+    inline void Element::unregister_subtree_ids() {
+        this->unregister_own_id();
+        for (auto& child : this->children) {
+            child->unregister_subtree_ids();
+        }
+    }
+
+    inline void Element::register_own_id() {
+        const auto current_id = this->id();
+        if (current_id.empty()) return;
+
+        if (auto* root = this->owner_svg()) {
+            root->register_id(*this, current_id);
+            this->indexed_id_ = current_id;
+        }
+    }
+
+    inline void Element::unregister_own_id() {
+        if (this->indexed_id_.empty()) return;
+
+        if (auto* root = this->owner_svg()) {
+            root->unregister_id(*this, this->indexed_id_);
+        }
+        this->indexed_id_.clear();
+    }
+
+    inline Symbol* Defs::symbol(std::string id) {
+        for (auto* child : this->get_immediate_children<Symbol>()) {
+            if (child->id() == id) return child;
+        }
+        return this->add_child<Symbol>(std::move(id));
+    }
+
+    inline std::string Symbol::href() const {
+        const auto symbol_id = this->id();
+        if (symbol_id.empty()) {
+            throw std::logic_error("SVG symbol must have an id before it can be referenced");
+        }
+        return "#" + symbol_id;
+    }
+
+    inline Use Symbol::use(double x, double y) const {
+        return Use(this->href(), x, y);
+    }
+
+    inline Use Symbol::use(double x, double y, double width, double height) const {
+        return Use(this->href(), x, y, width, height);
+    }
 
     class Path : public Shape {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Path;
         using Shape::Shape;
+        ElementKind kind() const override { return static_kind; }
 
         template<typename T>
         inline void start(T x, T y) {
             /** Start line at (x, y)
              *  This function overwrites the current path if it exists
              */
-            this->attr["d"] = "M " + std::to_string(x) + " " + std::to_string(y);
+            this->set_attr("d", "M " + std::to_string(x) + " " + std::to_string(y));
             this->x_start = x;
             this->y_start = y;
         }
@@ -689,11 +1281,11 @@ namespace SVG {
              *  then start() will be called with (x, y) as arguments
              */
 
-            if (this->attr.find("d") == this->attr.end())
+            if (!this->has_attr("d"))
                 start(x, y);
             else
-                this->attr["d"] += " L " + std::to_string(x) +
-                                   " " + std::to_string(y);
+                this->mutable_attrs()["d"] += " L " + std::to_string(x) +
+                                             " " + std::to_string(y);
         }
 
         inline void line_to(std::pair<double, double> coord) {
@@ -704,10 +1296,6 @@ namespace SVG {
             /** Draw a line back to the origin */
             this->line_to(x_start, y_start);
         }
-
-    protected:
-        std::string tag() override { return "path"; }
-
     private:
         double x_start;
         double y_start;
@@ -715,8 +1303,10 @@ namespace SVG {
 
     class Text : public Element {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Text;
         Text() = default;
         using Element::Element;
+        ElementKind kind() const override { return static_kind; }
 
         Text(double x, double y, std::string _content) {
             set_attr("x", to_string(x));
@@ -730,20 +1320,21 @@ namespace SVG {
     protected:
         std::string content;
         std::string svg_to_string(const size_t) override;
-        std::string tag() override { return "text"; }
     };
 
     class Group : public Element {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Group;
         using Element::Element;
-    protected:
-        std::string tag() override { return "g"; }
+        ElementKind kind() const override { return static_kind; }
     };
 
     class Line : public Shape {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Line;
         Line() = default;
         using Shape::Shape;
+        ElementKind kind() const override { return static_kind; }
 
         Line(double x1, double x2, double y1, double y2) : Shape({
                 { "x1", to_string(x1) },
@@ -771,13 +1362,14 @@ namespace SVG {
 
     protected:
         Element::BoundingBox get_bbox() override;   
-        std::string tag() override { return "line"; }
     };
 
     class Rect : public Shape {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Rect;
         Rect() = default;
         using Shape::Shape;
+        ElementKind kind() const override { return static_kind; }
 
         Rect(
             double x, double y, double width, double height) :
@@ -789,14 +1381,14 @@ namespace SVG {
             }) {};
 
         Element::BoundingBox get_bbox() override;
-    protected:
-        std::string tag() override { return "rect"; }
     };
 
     class Circle : public Shape {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Circle;
         Circle() = default;
         using Shape::Shape;
+        ElementKind kind() const override { return static_kind; }
 
         Circle(double cx, double cy, double radius) :
                 Shape({
@@ -813,25 +1405,22 @@ namespace SVG {
         virtual double width() override { return this->radius() * 2; }
         virtual double height() override { return this->width(); }
         Element::BoundingBox get_bbox() override;
-
-    protected:
-        std::string tag() override { return "circle"; }
     };
 
     class Polygon : public Element {
     public:
+        static constexpr ElementKind static_kind = ElementKind::Polygon;
         Polygon() = default;
         using Element::Element;
+        ElementKind kind() const override { return static_kind; }
 
         Polygon(const std::vector<Point>& points) {
             // Quick and dirty
-            std::string& point_str = this->attr["points"];
+            std::string point_str;
             for (auto& pt : points)
                 point_str += to_string(pt) + " ";
+            this->set_attr("points", point_str);
         };
-
-    protected:
-        std::string tag() override { return "polygon"; }
     };
 
     inline Element::BoundingBox Line::get_bbox() {
@@ -897,8 +1486,8 @@ namespace SVG {
         std::string ret = indent + "<" + tag();
 
         // Set attributes
-        for (auto& pair: attr)
-            ret += " " + pair.first + "=" + "\"" + pair.second + "\"";
+        for (auto& pair: attrs())
+            ret += " " + pair.first + "=" + "\"" + escape_xml(pair.second) + "\"";
 
         if (!this->children.empty()) {
             ret += ">\n";
@@ -922,7 +1511,7 @@ namespace SVG {
         for (auto& selector : css) {
             // Loop over each selector's attribute/value pairs
             ret += indent + "\t\t" + selector.first + " {\n";
-            for (auto& attr : selector.second.attr)
+            for (auto& attr : selector.second.attrs())
                 ret += indent + "\t\t\t" + attr.first + ": " + attr.second + ";\n";
             ret += indent + "\t\t" + "}\n";
         }
@@ -964,9 +1553,9 @@ namespace SVG {
     inline std::string Text::svg_to_string(const size_t indent_level) {
         auto indent = std::string(indent_level, '\t');
         std::string ret = indent + "<text";
-        for (auto& pair: attr)
-            ret += " " + pair.first + "=" + "\"" + pair.second + "\"";
-        return ret += ">" + this->content + "</text>";
+        for (auto& pair: attrs())
+            ret += " " + pair.first + "=" + "\"" + escape_xml(pair.second) + "\"";
+        return ret += ">" + escape_xml(this->content) + "</text>";
     }
 
     inline void Element::autoscale(const double margin) {
