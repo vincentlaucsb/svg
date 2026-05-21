@@ -40,12 +40,13 @@ jobs:
 
       - name: Capture coverage
         run: |
-          lcov --capture --directory build-coverage --output-file coverage.info
-          lcov --remove coverage.info \
+          lcov --capture --directory build-coverage --output-file coverage.raw.info
+          lcov --remove coverage.raw.info \
             '*/build-coverage/*' \
             '*/examples/*' \
             '*/tests/*' \
             '/usr/*' \
+            --ignore-errors unused \
             --output-file coverage.info
           lcov --list coverage.info
 
