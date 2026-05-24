@@ -1426,6 +1426,10 @@ namespace SVG {
         std::string id() const;
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
         void autoscale(const double margin);
+        /** Set only the viewBox from content bounds, leaving width and height unchanged. */
+        void responsive_autoscale(const Margins& margins=DEFAULT_MARGINS);
+        /** Set only the viewBox from content bounds and percentage margins. */
+        void responsive_autoscale(const double margin);
         virtual BoundingBox get_bbox() const;
         ChildMap get_children();
         ConstChildMap get_children() const;
@@ -1443,7 +1447,9 @@ namespace SVG {
         using ChildIterator = std::vector<std::unique_ptr<Element>>::iterator;
         std::vector<Element*> get_children_helper();
         std::vector<const Element*> get_children_helper() const;
+        BoundingBox get_autoscale_bbox() const;
         void get_bbox(Element::BoundingBox&) const;
+        void set_viewbox_from_bbox(const BoundingBox& bbox, const Margins& margins);
         virtual std::string svg_to_string(const size_t indent_level) const; /** SVG string corresponding to this element */
         virtual std::string tag() { return tag_name(this->kind()); } /** The SVG tag of this element */
         /** Const rendering remains compatible with custom subclasses that still override only non-const tag(). */
@@ -1599,7 +1605,7 @@ namespace SVG {
 
             const auto root_transform = transform_for(root, detail::AffineTransform());
             if (include_root) {
-                pending_.push_back({ root, root_transform });
+                pending_.push_back(Frame(root, root_transform));
             } else {
                 push_children(root, root_transform);
             }
@@ -1631,7 +1637,12 @@ namespace SVG {
 
     private:
         struct Frame {
-            Element* element = nullptr;
+            Frame() : element(nullptr), transform() {}
+            Frame(Element* element, const detail::AffineTransform& transform) :
+                    element(element),
+                    transform(transform) {}
+
+            Element* element;
             detail::AffineTransform transform;
         };
 
@@ -1647,13 +1658,13 @@ namespace SVG {
         void push_children(Element* element, const detail::AffineTransform& transform) {
             for (auto child = element->children.rbegin(); child != element->children.rend(); ++child) {
                 auto* child_ptr = child->get();
-                pending_.push_back({ child_ptr, transform_for(child_ptr, transform) });
+                pending_.push_back(Frame(child_ptr, transform_for(child_ptr, transform)));
             }
         }
 
         void advance() {
             if (pending_.empty()) {
-                current_ = {};
+                current_ = Frame();
                 end_ = true;
                 return;
             }
@@ -1683,7 +1694,7 @@ namespace SVG {
 
             const auto root_transform = transform_for(root, detail::AffineTransform());
             if (include_root) {
-                pending_.push_back({ root, root_transform });
+                pending_.push_back(Frame(root, root_transform));
             } else {
                 push_children(root, root_transform);
             }
@@ -1715,7 +1726,12 @@ namespace SVG {
 
     private:
         struct Frame {
-            const Element* element = nullptr;
+            Frame() : element(nullptr), transform() {}
+            Frame(const Element* element, const detail::AffineTransform& transform) :
+                    element(element),
+                    transform(transform) {}
+
+            const Element* element;
             detail::AffineTransform transform;
         };
 
@@ -1731,13 +1747,13 @@ namespace SVG {
         void push_children(const Element* element, const detail::AffineTransform& transform) {
             for (auto child = element->children.rbegin(); child != element->children.rend(); ++child) {
                 const auto* child_ptr = child->get();
-                pending_.push_back({ child_ptr, transform_for(child_ptr, transform) });
+                pending_.push_back(Frame(child_ptr, transform_for(child_ptr, transform)));
             }
         }
 
         void advance() {
             if (pending_.empty()) {
-                current_ = {};
+                current_ = Frame();
                 end_ = true;
                 return;
             }
@@ -2632,10 +2648,33 @@ namespace SVG {
         return detail::text_content_element_to_string(*this, tag_name(this->kind()), this->content, indent_level);
     }
 
+    inline Element::BoundingBox Element::get_autoscale_bbox() const {
+        Element::BoundingBox bbox = this->get_bbox();
+        this->get_bbox(bbox); // Compute the transform-aware descendant bounds
+        return bbox;
+    }
+
+    inline void Element::set_viewbox_from_bbox(const BoundingBox& bbox, const Margins& margins) {
+        double width = bbox.x2 - bbox.x1,
+            height = bbox.y2 - bbox.y1;
+
+        width += margins.x1 + margins.x2;
+        height += margins.y1 + margins.y2;
+        double x1 = bbox.x1 - margins.x1,
+            y1 = bbox.y1 - margins.y1;
+
+        std::stringstream viewbox;
+        viewbox << std::fixed << std::setprecision(1)
+            << x1 << " " // min-x
+            << y1 << " " // min-y
+            << width << " "
+            << height;
+        this->set_attr("viewBox", viewbox.str());
+    }
+
     inline void Element::autoscale(const double margin) {
         /** Like other autoscale() but accepts margin as a percentage */
-        Element::BoundingBox bbox = this->get_bbox();
-        this->get_bbox(bbox);
+        auto bbox = this->get_autoscale_bbox();
         double width = bbox.x2 - bbox.x1,
             height = bbox.y2 - bbox.y1;
 
@@ -2651,24 +2690,29 @@ namespace SVG {
          *
          *  @param[in] margins Extra margins for the sides
          */
-        using std::stof;
-
-        Element::BoundingBox bbox = this->get_bbox();
-        this->get_bbox(bbox); // Compute the bounding box (recursive)
+        auto bbox = this->get_autoscale_bbox();
         double width = bbox.x2 - bbox.x1 + margins.x1 + margins.x2,
-            height = bbox.y2 - bbox.y1 + margins.y1 + margins.y2,
-            x1 = bbox.x1 - margins.x1, y1 = bbox.y1 - margins.y1;
+            height = bbox.y2 - bbox.y1 + margins.y1 + margins.y2;
 
         this->set_attr("width", width)
              .set_attr("height", height);
 
-        std::stringstream viewbox;
-        viewbox << std::fixed << std::setprecision(1)
-            << x1 << " " // min-x
-            << y1 << " " // min-y
-            << width << " "
-            << height;
-        this->set_attr("viewBox", viewbox.str());
+        this->set_viewbox_from_bbox(bbox, margins);
+    }
+
+    inline void Element::responsive_autoscale(const double margin) {
+        auto bbox = this->get_autoscale_bbox();
+        double width = bbox.x2 - bbox.x1,
+            height = bbox.y2 - bbox.y1;
+
+        this->responsive_autoscale({
+            width * margin, width * margin,
+            height * margin, height * margin
+        });
+    }
+
+    inline void Element::responsive_autoscale(const Margins& margins) {
+        this->set_viewbox_from_bbox(this->get_autoscale_bbox(), margins);
     }
 
     inline void Element::get_bbox(Element::BoundingBox& box) const {

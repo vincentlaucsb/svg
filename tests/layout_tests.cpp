@@ -51,6 +51,30 @@ TEST_CASE("autoscale includes simple rotate transforms", "[layout]") {
     REQUIRE(root.get_attr("viewBox") == "-20.0 0.0 20.0 10.0");
 }
 
+TEST_CASE("responsive_autoscale sets viewBox without width or height", "[layout]") {
+    SVG::SVG root;
+    root.add_child<SVG::Rect>(100, 50, 20, 10);
+
+    root.responsive_autoscale({ 5, 15, 10, 20 });
+
+    REQUIRE(root.get_attr("width").empty());
+    REQUIRE(root.get_attr("height").empty());
+    REQUIRE(root.get_attr("viewBox") == "95.0 40.0 40.0 40.0");
+}
+
+TEST_CASE("responsive_autoscale preserves explicit display size", "[layout]") {
+    SVG::SVG root;
+    root.set_attr("width", "100%");
+    root.set_attr("height", "auto");
+    root.add_child<SVG::Rect>(0, 0, 100, 50);
+
+    root.responsive_autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(root.get_attr("width") == "100%");
+    REQUIRE(root.get_attr("height") == "auto");
+    REQUIRE(root.get_attr("viewBox") == "0.0 0.0 100.0 50.0");
+}
+
 TEST_CASE("merge combines SVG documents horizontally", "[layout]") {
     auto s1 = two_circles(200, 200, 200);
     auto s2 = two_circles(200, 200, 200);
