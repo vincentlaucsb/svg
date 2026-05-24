@@ -10,6 +10,16 @@ namespace {
     protected:
         std::string tag() override { return "feGaussianBlur"; }
     };
+
+    class CloneableCustomFilter : public CustomFilter {
+    public:
+        using CustomFilter::CustomFilter;
+
+    protected:
+        std::unique_ptr<SVG::Element> clone_element_impl() const override {
+            return clone_as<CloneableCustomFilter>();
+        }
+    };
 }
 
 TEST_CASE("Elements serialize with proper indentation", "[render]") {
@@ -143,4 +153,17 @@ TEST_CASE("Custom elements serialize custom tags and support untyped lookup", "[
     REQUIRE(root.get_element_by_id("blur") == blur);
     REQUIRE(blur->kind() == SVG::ElementKind::Custom);
     REQUIRE(svg.find("<feGaussianBlur id=\"blur\" stdDeviation=\"2\" />") != std::string::npos);
+    REQUIRE_THROWS_AS(root.clone(), std::logic_error);
+}
+
+TEST_CASE("Custom elements opt into clone with copy construction", "[render]") {
+    SVG::SVG root;
+    auto* blur = root.add_child<CloneableCustomFilter>("blur");
+    blur->set_attr("stdDeviation", "2");
+
+    auto copy = root.clone();
+    const std::string copied_svg = copy;
+
+    REQUIRE(copy.get_element_by_id("blur") != blur);
+    REQUIRE(copied_svg.find("<feGaussianBlur id=\"blur\" stdDeviation=\"2\" />") != std::string::npos);
 }

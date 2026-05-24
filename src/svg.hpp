@@ -49,6 +49,7 @@
 #include <string>
 #include <sstream> // stringstream
 #include <iomanip> // setprecision
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <type_traits> // is_base_of
@@ -1290,7 +1291,7 @@ namespace SVG {
             BoundingBox() = default;
             BoundingBox(double a, double b, double c, double d) : QuadCoord({ a, b, c, d }) {};
 
-            BoundingBox operator+ (const BoundingBox& other) {
+            BoundingBox operator+ (const BoundingBox& other) const {
                 /** Return a new bounding box which envelopes both original boxes */
                 using namespace util;
                 BoundingBox new_box;
@@ -1302,11 +1303,18 @@ namespace SVG {
             }
         };
         using ChildList = std::vector<Element*>;
+        using ConstChildList = std::vector<const Element*>;
         using ChildMap = std::map<std::string, ChildList>;
+        using ConstChildMap = std::map<std::string, ConstChildList>;
+        class DepthFirstIterator;
+        class ConstDepthFirstIterator;
+        class DepthFirstRange;
+        class ConstDepthFirstRange;
 
         Element() = default;
         virtual ~Element() = default;
-        Element(const Element& other) = delete; // No copy constructor
+        /** Copy attributes and deep-copy children without carrying parent or owner indexes. */
+        Element(const Element& other);
         Element(Element&& other) noexcept :
                 AttributeMap(std::move(other)),
                 children(std::move(other.children)),
@@ -1333,7 +1341,12 @@ namespace SVG {
         using AttributeMap::AttributeMap;
 
         // Implicit string conversion
-        operator std::string() { return this->svg_to_string(0); };
+        operator std::string() const { return this->svg_to_string(0); };
+
+        /** Return a type-preserving deep copy of this element subtree.
+         *  Custom subclasses must override clone_element_impl(), usually by returning clone_as<Subclass>().
+         */
+        std::unique_ptr<Element> clone_element() const;
 
         template<typename T, typename... Args>
         T* add_child(Args&&... args) {
@@ -1366,6 +1379,19 @@ namespace SVG {
         }
 
         template<typename T>
+        std::vector<const T*> get_children() const {
+            /** Return all children of type T */
+            SVG_TYPE_CHECK;
+            std::vector<const T*> ret;
+            auto child_elems = this->get_children_helper();
+
+            for (auto& child: child_elems)
+                if (child->kind() == T::static_kind) ret.push_back(static_cast<const T*>(child));
+
+            return ret;
+        }
+
+        template<typename T>
         std::vector<T*> get_immediate_children() {
             /** Return all immediate children of type T */
             SVG_TYPE_CHECK;
@@ -1377,8 +1403,22 @@ namespace SVG {
             return ret;
         }
 
+        template<typename T>
+        std::vector<const T*> get_immediate_children() const {
+            /** Return all immediate children of type T */
+            SVG_TYPE_CHECK;
+            std::vector<const T*> ret;
+            for (auto& child : this->children) {
+                if (child->kind() == T::static_kind) ret.push_back(static_cast<const T*>(child.get()));
+            }
+
+            return ret;
+        }
+
         Element* get_element_by_id(const std::string& id);
+        const Element* get_element_by_id(const std::string& id) const;
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
+        std::vector<const Element*> get_elements_by_class(const std::string& clsname) const;
         const Element* parent() const { return parent_; }
         /** Return the element category used by typed traversal; custom subclasses default to Custom. */
         virtual ElementKind kind() const { return ElementKind::Custom; }
@@ -1386,17 +1426,36 @@ namespace SVG {
         std::string id() const;
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
         void autoscale(const double margin);
-        virtual BoundingBox get_bbox();
+        virtual BoundingBox get_bbox() const;
         ChildMap get_children();
+        ConstChildMap get_children() const;
+        /** Iterate through this element and its descendants in depth-first order. */
+        DepthFirstRange depth_first();
+        /** Iterate through this element and its descendants in depth-first order. */
+        ConstDepthFirstRange depth_first() const;
+        /** Iterate through descendants in depth-first order, excluding this element. */
+        DepthFirstRange descendants();
+        /** Iterate through descendants in depth-first order, excluding this element. */
+        ConstDepthFirstRange descendants() const;
 
     protected:
         std::vector<std::unique_ptr<Element>> children; /** Smart pointers to child elements */
         using ChildIterator = std::vector<std::unique_ptr<Element>>::iterator;
         std::vector<Element*> get_children_helper();
-        void get_bbox(Element::BoundingBox&);
-        void get_bbox(Element::BoundingBox&, const detail::AffineTransform& parent_transform);
-        virtual std::string svg_to_string(const size_t indent_level); /** SVG string corresponding to this element */
+        std::vector<const Element*> get_children_helper() const;
+        void get_bbox(Element::BoundingBox&) const;
+        virtual std::string svg_to_string(const size_t indent_level) const; /** SVG string corresponding to this element */
         virtual std::string tag() { return tag_name(this->kind()); } /** The SVG tag of this element */
+        /** Const rendering remains compatible with custom subclasses that still override only non-const tag(). */
+        virtual std::string tag() const { return const_cast<Element*>(this)->tag(); }
+        virtual std::unique_ptr<Element> clone_element_impl() const;
+
+        template<typename T>
+        std::unique_ptr<T> clone_as() const {
+            static_assert(std::is_copy_constructible<T>::value,
+                          "Cloneable SVG element subclasses must be copy constructible.");
+            return detail::make_unique<T>(static_cast<const T&>(*this));
+        }
 
         void set_attr_value(const std::string& key, const std::string& value) override;
         AttrSetter make_attr_setter(const std::string& key) override;
@@ -1430,7 +1489,7 @@ namespace SVG {
             }
         }
 
-        double find_numeric(const std::string& key) {
+        double find_numeric(const std::string& key) const {
             /** Return the numeric attribute (if it exists) or NAN
              *
              *  @param[in] key Name of the attribute
@@ -1454,12 +1513,29 @@ namespace SVG {
         return ret;
     }
 
+    template<>
+    inline Element::ConstChildList Element::get_immediate_children() const {
+        /** Return all immediate children, regardless of type, as Element pointers */
+        Element::ConstChildList ret;
+        for (auto& child : this->children) ret.push_back(child.get());
+        return ret;
+    }
+
     inline Element* Element::get_element_by_id(const std::string &id) {
         /** Return the SVG element that has a certain id */
         auto child_elems = this->get_children_helper();
         for (auto& current: child_elems)
             if (current->id() == id) return current;
         
+        return nullptr;
+    }
+
+    inline const Element* Element::get_element_by_id(const std::string &id) const {
+        /** Return the SVG element that has a certain id */
+        auto child_elems = this->get_children_helper();
+        for (auto& current: child_elems)
+            if (current->id() == id) return current;
+
         return nullptr;
     }
 
@@ -1477,7 +1553,249 @@ namespace SVG {
         return ret;
     }
 
-    inline Element::BoundingBox Element::get_bbox() {
+    inline std::vector<const Element*> Element::get_elements_by_class(const std::string &clsname) const {
+        /** Return all SVG elements with a certain class name */
+        std::vector<const Element*> ret;
+        auto child_elems = this->get_children_helper();
+
+        for (auto& current: child_elems) {
+            if (current->has_attr("class")
+                && current->class_list().contains(clsname))
+                ret.push_back(current);
+        }
+
+        return ret;
+    }
+
+    inline std::unique_ptr<Element> Element::clone_element() const {
+        return this->clone_element_impl();
+    }
+
+    inline Element::Element(const Element& other) :
+            AttributeMap(other.attrs()),
+            parent_(nullptr),
+            owner_(nullptr),
+            indexed_id_() {
+        for (const auto& child : other.children) {
+            this->insert_child(child->clone_element(), this->children.end());
+        }
+    }
+
+    inline std::unique_ptr<Element> Element::clone_element_impl() const {
+        throw std::logic_error("Custom SVG element subclasses must override clone_element_impl() to be cloned.");
+    }
+
+    class Element::DepthFirstIterator {
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using value_type = Element*;
+        using difference_type = std::ptrdiff_t;
+        using pointer = Element**;
+        using reference = Element*&;
+
+        DepthFirstIterator() = default;
+        DepthFirstIterator(Element* root, bool include_root) {
+            if (!root) return;
+
+            const auto root_transform = transform_for(root, detail::AffineTransform());
+            if (include_root) {
+                pending_.push_back({ root, root_transform });
+            } else {
+                push_children(root, root_transform);
+            }
+            advance();
+        }
+
+        Element* operator*() const { return current_.element; }
+        const detail::AffineTransform& transform() const { return current_.transform; }
+
+        DepthFirstIterator& operator++() {
+            advance();
+            return *this;
+        }
+
+        DepthFirstIterator operator++(int) {
+            auto copy = *this;
+            ++(*this);
+            return copy;
+        }
+
+        bool operator==(const DepthFirstIterator& other) const {
+            if (end_ || other.end_) return end_ == other.end_;
+            return current_.element == other.current_.element;
+        }
+
+        bool operator!=(const DepthFirstIterator& other) const {
+            return !(*this == other);
+        }
+
+    private:
+        struct Frame {
+            Element* element = nullptr;
+            detail::AffineTransform transform;
+        };
+
+        static detail::AffineTransform transform_for(Element* element,
+                                                     const detail::AffineTransform& parent_transform) {
+            if (element->has_attr("transform")) {
+                return detail::multiply(parent_transform,
+                                        detail::parse_supported_transform(element->get_attr("transform")));
+            }
+            return parent_transform;
+        }
+
+        void push_children(Element* element, const detail::AffineTransform& transform) {
+            for (auto child = element->children.rbegin(); child != element->children.rend(); ++child) {
+                auto* child_ptr = child->get();
+                pending_.push_back({ child_ptr, transform_for(child_ptr, transform) });
+            }
+        }
+
+        void advance() {
+            if (pending_.empty()) {
+                current_ = {};
+                end_ = true;
+                return;
+            }
+
+            current_ = pending_.back();
+            pending_.pop_back();
+            end_ = false;
+            push_children(current_.element, current_.transform);
+        }
+
+        std::vector<Frame> pending_;
+        Frame current_;
+        bool end_ = true;
+    };
+
+    class Element::ConstDepthFirstIterator {
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using value_type = const Element*;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const Element**;
+        using reference = const Element*&;
+
+        ConstDepthFirstIterator() = default;
+        ConstDepthFirstIterator(const Element* root, bool include_root) {
+            if (!root) return;
+
+            const auto root_transform = transform_for(root, detail::AffineTransform());
+            if (include_root) {
+                pending_.push_back({ root, root_transform });
+            } else {
+                push_children(root, root_transform);
+            }
+            advance();
+        }
+
+        const Element* operator*() const { return current_.element; }
+        const detail::AffineTransform& transform() const { return current_.transform; }
+
+        ConstDepthFirstIterator& operator++() {
+            advance();
+            return *this;
+        }
+
+        ConstDepthFirstIterator operator++(int) {
+            auto copy = *this;
+            ++(*this);
+            return copy;
+        }
+
+        bool operator==(const ConstDepthFirstIterator& other) const {
+            if (end_ || other.end_) return end_ == other.end_;
+            return current_.element == other.current_.element;
+        }
+
+        bool operator!=(const ConstDepthFirstIterator& other) const {
+            return !(*this == other);
+        }
+
+    private:
+        struct Frame {
+            const Element* element = nullptr;
+            detail::AffineTransform transform;
+        };
+
+        static detail::AffineTransform transform_for(const Element* element,
+                                                     const detail::AffineTransform& parent_transform) {
+            if (element->has_attr("transform")) {
+                return detail::multiply(parent_transform,
+                                        detail::parse_supported_transform(element->get_attr("transform")));
+            }
+            return parent_transform;
+        }
+
+        void push_children(const Element* element, const detail::AffineTransform& transform) {
+            for (auto child = element->children.rbegin(); child != element->children.rend(); ++child) {
+                const auto* child_ptr = child->get();
+                pending_.push_back({ child_ptr, transform_for(child_ptr, transform) });
+            }
+        }
+
+        void advance() {
+            if (pending_.empty()) {
+                current_ = {};
+                end_ = true;
+                return;
+            }
+
+            current_ = pending_.back();
+            pending_.pop_back();
+            end_ = false;
+            push_children(current_.element, current_.transform);
+        }
+
+        std::vector<Frame> pending_;
+        Frame current_;
+        bool end_ = true;
+    };
+
+    class Element::DepthFirstRange {
+    public:
+        DepthFirstRange(Element* root, bool include_root) :
+                root_(root), include_root_(include_root) {}
+
+        DepthFirstIterator begin() const { return DepthFirstIterator(root_, include_root_); }
+        DepthFirstIterator end() const { return DepthFirstIterator(); }
+
+    private:
+        Element* root_;
+        bool include_root_;
+    };
+
+    class Element::ConstDepthFirstRange {
+    public:
+        ConstDepthFirstRange(const Element* root, bool include_root) :
+                root_(root), include_root_(include_root) {}
+
+        ConstDepthFirstIterator begin() const { return ConstDepthFirstIterator(root_, include_root_); }
+        ConstDepthFirstIterator end() const { return ConstDepthFirstIterator(); }
+
+    private:
+        const Element* root_;
+        bool include_root_;
+    };
+
+    inline Element::DepthFirstRange Element::depth_first() {
+        return { this, true };
+    }
+
+    inline Element::ConstDepthFirstRange Element::depth_first() const {
+        return { this, true };
+    }
+
+    inline Element::DepthFirstRange Element::descendants() {
+        return { this, false };
+    }
+
+    inline Element::ConstDepthFirstRange Element::descendants() const {
+        return { this, false };
+    }
+
+    inline Element::BoundingBox Element::get_bbox() const {
         /** Compute the bounding box necessary to contain this element */
         return { NAN, NAN, NAN, NAN };
     }
@@ -1489,12 +1807,12 @@ namespace SVG {
     public:
         using Element::Element;
 
-        operator Point() {
+        operator Point() const {
             /** Implicit conversion to Point */
             return std::make_pair(this->x(), this->y());
         }
 
-        virtual std::vector<Point> points() {
+        virtual std::vector<Point> points() const {
             /** Return a set of points used for calculating a bounding polygon for this object */
             auto bbox = this->get_bbox();
             return {
@@ -1505,15 +1823,15 @@ namespace SVG {
             };
         }
 
-        virtual double x() { return this->find_numeric("x"); }
-        virtual double y() { return this->find_numeric("y"); }
-        virtual double width() {
+        virtual double x() const { return this->find_numeric("x"); }
+        virtual double y() const { return this->find_numeric("y"); }
+        virtual double width() const {
             /** Return this item's width, either by calculating it or finding the 
              *  width attribute
              */
             return this->find_numeric("width");
         }
-        virtual double height() {
+        virtual double height() const {
             /** Return this item's height, either by calculating it or finding the
              *  height attribute
              */
@@ -1529,6 +1847,9 @@ namespace SVG {
         ElementKind kind() const override { return static_kind; }
         /** Return an existing symbol with this id, or create one when absent. */
         Symbol* symbol(std::string id);
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Defs>(); }
     };
 
     /** Reusable element definition that can be instantiated with Use. */
@@ -1549,6 +1870,9 @@ namespace SVG {
         Use use(double x, double y) const;
         /** Create a sized use element that references this symbol. */
         Use use(double x, double y, double width, double height) const;
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Symbol>(); }
     };
 
     /** Instance of a reusable SVG element referenced by href. */
@@ -1579,6 +1903,9 @@ namespace SVG {
             return *this;
         }
         ElementKind kind() const override { return static_kind; }
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Use>(); }
     };
 
     class SVG : public Shape {
@@ -1599,7 +1926,8 @@ namespace SVG {
             ElementKind kind() const override { return static_kind; }
 
         protected:
-            std::string svg_to_string(const size_t) override;
+            std::string svg_to_string(const size_t) const override;
+            std::unique_ptr<Element> clone_element_impl() const override;
         };
 
         static constexpr ElementKind static_kind = ElementKind::SVG;
@@ -1610,6 +1938,14 @@ namespace SVG {
             set_owner_svg(this);
             rebuild_id_index();
         };
+
+        /** Deep-copy a document and rebuild internal element indexes for the copied tree. */
+        SVG(const SVG& other) : Shape(other.attrs()), id_index_(), defs_(nullptr), css(nullptr) {
+            clone_children_from(other);
+            refresh_special_children();
+            set_owner_svg(this);
+            rebuild_id_index();
+        }
 
         SVG(SVG&& other) noexcept :
                 Shape(std::move(other)),
@@ -1632,6 +1968,13 @@ namespace SVG {
                 rebuild_id_index();
             }
             return *this;
+        }
+
+        SVG& operator=(const SVG& other) = delete;
+
+        /** Return a deep copy of the SVG document with independent elements and rebuilt indexes. */
+        SVG clone() const {
+            return SVG(*this);
         }
 
         /** Retrieve a handle corresponding to the given CSS selector */
@@ -1710,6 +2053,11 @@ namespace SVG {
             return found == this->id_index_.end() ? nullptr : found->second;
         }
 
+        const Element* get_element_by_id(const std::string& id) const {
+            const auto found = this->id_index_.find(id);
+            return found == this->id_index_.end() ? nullptr : found->second;
+        }
+
         /** Return an element by id only when its built-in kind matches T::static_kind. */
         template<typename T>
         T* get_element_by_id(const std::string& id) {
@@ -1719,12 +2067,30 @@ namespace SVG {
             return static_cast<T*>(element);
         }
 
+        /** Return an element by id only when its built-in kind matches T::static_kind. */
+        template<typename T>
+        const T* get_element_by_id(const std::string& id) const {
+            SVG_TYPE_CHECK;
+            auto* element = this->get_element_by_id(id);
+            if (!element || element->kind() != T::static_kind) return nullptr;
+            return static_cast<const T*>(element);
+        }
+
         Style* css = this->add_child<Style>(); /**< This item's associated CSS stylesheet */
         ElementKind kind() const override { return static_kind; }
 
     protected:
+        std::unique_ptr<Element> clone_element_impl() const override {
+            return detail::make_unique<SVG>(*this);
+        }
 
     private:
+        void clone_children_from(const SVG& other) {
+            for (const auto& child : other.children) {
+                this->insert_child(child->clone_element(), this->children.end());
+            }
+        }
+
         void refresh_special_children() {
             this->css = nullptr;
             this->defs_ = nullptr;
@@ -1938,9 +2304,15 @@ namespace SVG {
             /** Draw a line back to the origin */
             this->line_to(x_start, y_start);
         }
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override {
+            return clone_as<Path>();
+        }
+
     private:
-        double x_start;
-        double y_start;
+        double x_start = 0;
+        double y_start = 0;
     };
 
     /** Text positioned with x/y coordinates. */
@@ -1962,7 +2334,10 @@ namespace SVG {
 
     protected:
         std::string content;
-        std::string svg_to_string(const size_t) override;
+        std::string svg_to_string(const size_t) const override;
+        std::unique_ptr<Element> clone_element_impl() const override {
+            return clone_as<Text>();
+        }
     };
 
     /** Native SVG title element whose content is XML-escaped when serialized. */
@@ -1981,7 +2356,10 @@ namespace SVG {
         /** Unescaped title text; escaping is applied during serialization. */
         std::string content;
         /** Serialize as an XML-escaped title element. */
-        std::string svg_to_string(const size_t) override;
+        std::string svg_to_string(const size_t) const override;
+        std::unique_ptr<Element> clone_element_impl() const override {
+            return clone_as<Title>();
+        }
     };
 
     class Group : public Element {
@@ -1989,9 +2367,13 @@ namespace SVG {
         static constexpr ElementKind static_kind = ElementKind::Group;
         using Element::Element;
         ElementKind kind() const override { return static_kind; }
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Group>(); }
     };
-/** Short alias for Group, matching SVG's native @c g tag name. */
-using G = Group;
+
+    /** Short alias for Group, matching SVG's native @c g tag name. */
+    using G = Group;
 
     class Line : public Shape {
     public:
@@ -2009,23 +2391,24 @@ using G = Group;
 
         Line(Point x, Point y) : Line(x.first, y.first, x.second, y.second) {};
 
-        virtual double x() override { return x1() + (x2() - x1()) / 2; }
-        virtual double y() override { return y1() + (y2() - y1()) / 2; }
-        double x1() { return this->find_numeric("x1"); }
-        double x2() { return this->find_numeric("x2"); }
-        double y1() { return this->find_numeric("y1"); }
-        double y2() { return this->find_numeric("y2"); }
+        virtual double x() const override { return x1() + (x2() - x1()) / 2; }
+        virtual double y() const override { return y1() + (y2() - y1()) / 2; }
+        double x1() const { return this->find_numeric("x1"); }
+        double x2() const { return this->find_numeric("x2"); }
+        double y1() const { return this->find_numeric("y1"); }
+        double y2() const { return this->find_numeric("y2"); }
 
-        double width() override { return std::abs(x2() - x1()); }
-        double height() override { return std::abs(y2() - y1()); }
-        double length() { return std::sqrt(pow(width(), 2) + pow(height(), 2)); }
-        double slope() { return (y2() - y1()) / (x2() - x1()); }
-        double angle() { return atan(this->slope()) * RAD_TO_DEG; }
+        double width() const override { return std::abs(x2() - x1()); }
+        double height() const override { return std::abs(y2() - y1()); }
+        double length() const { return std::sqrt(pow(width(), 2) + pow(height(), 2)); }
+        double slope() const { return (y2() - y1()) / (x2() - x1()); }
+        double angle() const { return atan(this->slope()) * RAD_TO_DEG; }
 
-        std::pair<double, double> along(double percent);
+        std::pair<double, double> along(double percent) const;
 
     protected:
-        Element::BoundingBox get_bbox() override;   
+        Element::BoundingBox get_bbox() const override;
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Line>(); }
     };
 
     class Rect : public Shape {
@@ -2044,7 +2427,10 @@ using G = Group;
                     { "height", to_string(height) }
             }) {};
 
-        Element::BoundingBox get_bbox() override;
+        Element::BoundingBox get_bbox() const override;
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Rect>(); }
     };
 
     class Circle : public Shape {
@@ -2063,12 +2449,15 @@ using G = Group;
         };
 
         Circle(std::pair<double, double> xy, double radius) : Circle(xy.first, xy.second, radius) {};
-        double radius() { return this->find_numeric("r"); }
-        virtual double x() override { return this->find_numeric("cx"); }
-        virtual double y() override { return this->find_numeric("cy"); }
-        virtual double width() override { return this->radius() * 2; }
-        virtual double height() override { return this->width(); }
-        Element::BoundingBox get_bbox() override;
+        double radius() const { return this->find_numeric("r"); }
+        virtual double x() const override { return this->find_numeric("cx"); }
+        virtual double y() const override { return this->find_numeric("cy"); }
+        virtual double width() const override { return this->radius() * 2; }
+        virtual double height() const override { return this->width(); }
+        Element::BoundingBox get_bbox() const override;
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Circle>(); }
     };
 
     class Polygon : public Element {
@@ -2085,19 +2474,22 @@ using G = Group;
                 point_str += to_string(pt) + " ";
             this->set_attr("points", point_str);
         };
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Polygon>(); }
     };
 
-    inline Element::BoundingBox Line::get_bbox() {
+    inline Element::BoundingBox Line::get_bbox() const {
         return { x1(), x2(), y1(), y2() };
     }
 
-    inline Element::BoundingBox Rect::get_bbox() {
+    inline Element::BoundingBox Rect::get_bbox() const {
         double x = this->x(), y = this->y(),
             width = this->width(), height = this->height();
         return { x, x + width, y, y + height };
     }
 
-    inline Element::BoundingBox Circle::get_bbox() {
+    inline Element::BoundingBox Circle::get_bbox() const {
         double x = this->x(), y = this->y(), radius = this->radius();
 
         return {
@@ -2108,7 +2500,7 @@ using G = Group;
         };
     }
 
-    inline std::pair<double, double> Line::along(double percent) {
+    inline std::pair<double, double> Line::along(double percent) const {
         /** Return the coordinates required to place an element along
          *   this line
          */
@@ -2140,7 +2532,7 @@ using G = Group;
         return std::make_pair(x_pos, y_pos);
     }
 
-    inline std::string Element::svg_to_string(const size_t indent_level) {
+    inline std::string Element::svg_to_string(const size_t indent_level) const {
         /** Return the string representation of an SVG element
          *
          *  @param[out] indent_level The current level of indentation
@@ -2196,7 +2588,7 @@ using G = Group;
         return ret;
     }
 
-    inline std::string SVG::Style::svg_to_string(const size_t indent_level) {
+    inline std::string SVG::Style::svg_to_string(const size_t indent_level) const {
         /** Create a CSS stylesheet */
         auto indent = std::string(indent_level, '\t');
 
@@ -2228,11 +2620,15 @@ using G = Group;
         return "";
     }
 
-    inline std::string Text::svg_to_string(const size_t indent_level) {
+    inline std::unique_ptr<Element> SVG::Style::clone_element_impl() const {
+        return clone_as<Style>();
+    }
+
+    inline std::string Text::svg_to_string(const size_t indent_level) const {
         return detail::text_content_element_to_string(*this, tag_name(this->kind()), this->content, indent_level);
     }
 
-    inline std::string Title::svg_to_string(const size_t indent_level) {
+    inline std::string Title::svg_to_string(const size_t indent_level) const {
         return detail::text_content_element_to_string(*this, tag_name(this->kind()), this->content, indent_level);
     }
 
@@ -2275,25 +2671,22 @@ using G = Group;
         this->set_attr("viewBox", viewbox.str());
     }
 
-    inline void Element::get_bbox(Element::BoundingBox& box) {
-        /** Recursively compute a bounding box */
-        this->get_bbox(box, detail::AffineTransform());
-    }
+    inline void Element::get_bbox(Element::BoundingBox& box) const {
+        /** Compute a transform-aware bounding box without recursive traversal. */
+        auto elements = this->depth_first();
+        for (auto element = elements.begin(); element != elements.end(); ++element) {
+            const auto* current = *element;
+            auto current_box = current->get_bbox();
+            if (std::isnan(current_box.x1) || std::isnan(current_box.x2) ||
+                    std::isnan(current_box.y1) || std::isnan(current_box.y2)) {
+                continue;
+            }
 
-    inline void Element::get_bbox(Element::BoundingBox& box, const detail::AffineTransform& parent_transform) {
-        /** Recursively compute a transform-aware bounding box */
-        auto transform = parent_transform;
-        if (this->has_attr("transform")) {
-            transform = detail::multiply(transform, detail::parse_supported_transform(this->get_attr("transform")));
-        }
-
-        auto this_bbox = this->get_bbox();
-        if (!std::isnan(this_bbox.x1) && !std::isnan(this_bbox.x2) &&
-                !std::isnan(this_bbox.y1) && !std::isnan(this_bbox.y2)) {
-            const auto p1 = transform.apply({ this_bbox.x1, this_bbox.y1 });
-            const auto p2 = transform.apply({ this_bbox.x2, this_bbox.y1 });
-            const auto p3 = transform.apply({ this_bbox.x2, this_bbox.y2 });
-            const auto p4 = transform.apply({ this_bbox.x1, this_bbox.y2 });
+            const auto& transform = element.transform();
+            const auto p1 = transform.apply({ current_box.x1, current_box.y1 });
+            const auto p2 = transform.apply({ current_box.x2, current_box.y1 });
+            const auto p3 = transform.apply({ current_box.x2, current_box.y2 });
+            const auto p4 = transform.apply({ current_box.x1, current_box.y2 });
             Element::BoundingBox transformed_box(
                 std::min(std::min(p1.first, p2.first), std::min(p3.first, p4.first)),
                 std::max(std::max(p1.first, p2.first), std::max(p3.first, p4.first)),
@@ -2301,29 +2694,36 @@ using G = Group;
                 std::max(std::max(p1.second, p2.second), std::max(p3.second, p4.second)));
             box = transformed_box + box;
         }
-
-        for (auto& child: this->children) child->get_bbox(box, transform);
     }
 
     inline Element::ChildMap Element::get_children() {
         /** Recursively compute all of the children of an SVG element */
         Element::ChildMap child_map;
-        for (auto& child : this->get_children_helper())
+        for (auto* child : this->descendants())
+            child_map[child->tag()].push_back(child);
+        return child_map;
+    }
+
+    inline Element::ConstChildMap Element::get_children() const {
+        /** Recursively compute all of the children of an SVG element */
+        Element::ConstChildMap child_map;
+        for (const auto* child : this->descendants())
             child_map[child->tag()].push_back(child);
         return child_map;
     }
 
     inline std::vector<Element*> Element::get_children_helper() {
         /** Helper function which populates a std::deque with all of an Element's children */
-        std::deque<Element*> temp;
         std::vector<Element*> ret;
+        for (auto* child : this->descendants()) ret.push_back(child);
 
-        for (auto& child : this->children) { temp.push_back(child.get()); }
-        while (!temp.empty()) {
-            ret.push_back(temp.front());
-            for (auto& child : temp.front()->children) { temp.push_back(child.get()); }
-            temp.pop_front();
-        }
+        return ret;
+    };
+
+    inline std::vector<const Element*> Element::get_children_helper() const {
+        /** Helper function which populates a std::deque with all of an Element's children */
+        std::vector<const Element*> ret;
+        for (const auto* child : this->descendants()) ret.push_back(child);
 
         return ret;
     };
@@ -2406,11 +2806,7 @@ using G = Group;
     }
 
     inline SVG frame_animate(std::vector<SVG>& frames, const double fps) {
-        /** Given a vector of SVGs, create a frame-by-frame animation of them
-         *
-         *  @param[in]  A vector of frames (SVGs)
-         *  @param[out] fps Numbers of frames per second
-         */
+        /** Given a vector of SVGs, create a frame-by-frame animation of them. */
         SVG root;
         const double duration = (double)frames.size() / fps; // [seconds]
         const double frame_step = 1.0 / fps; // duration of each frame [seconds]
