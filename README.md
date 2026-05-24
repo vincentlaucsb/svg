@@ -57,6 +57,8 @@ int main() {
 }
 ```
 
+`autoscale()` measures element geometry, including simple SVG `rotate(...)` transforms. It does not inspect CSS transforms, rendered effects such as filters or shadows, stroke joins, or external stylesheets; pass `SVG::Margins` when the drawing needs extra page space for those effects.
+
 ### Output
 
 ```svg

@@ -77,10 +77,10 @@ TEST_CASE("Color helpers serialize concrete color values", "[style]") {
 
     const auto output = std::string(root);
 
-    REQUIRE(axis.str() == "#374151");
-    REQUIRE(background.str() == "#ffffff");
-    REQUIRE(SVG::Color::hex("#f0a").str() == "#ff00aa");
-    REQUIRE(accent.str() == "#f547ad");
+    REQUIRE(static_cast<std::string>(axis) == "#374151");
+    REQUIRE(static_cast<std::string>(background) == "#ffffff");
+    REQUIRE(static_cast<std::string>(SVG::Color::hex("#f0a")) == "#ff00aa");
+    REQUIRE(static_cast<std::string>(accent) == "#f547ad");
     REQUIRE(output.find(".axis {\n\t\t\t\tstroke: #374151;\n\t\t\t}") != std::string::npos);
     REQUIRE(output.find(".plot {\n\t\t\t\tfill: #ffffff;\n\t\t\t}") != std::string::npos);
     REQUIRE(output.find("<circle cx=\"0.0\" cy=\"0.0\" fill=\"#f547ad\" r=\"4.0\" />") != std::string::npos);
@@ -90,9 +90,11 @@ TEST_CASE("Color helpers preserve palette relationships", "[style]") {
     const auto text = SVG::Color::hex("#111827");
     const auto background = SVG::Color::hex("#ffffff");
 
-    REQUIRE(text.mix(background, 0.25).str() == "#4d525d");
-    REQUIRE(text.tint(0.5).str() == "#888c93");
-    REQUIRE(text.shade(0.5).str() == "#090c14");
+    REQUIRE(static_cast<std::string>(text.mix(background, 0.25)) == "#4d525d");
+    REQUIRE(static_cast<std::string>(text.tint(0.5)) == "#888c93");
+    REQUIRE(static_cast<std::string>(text.shade(0.5)) == "#090c14");
+    REQUIRE(static_cast<std::string>(SVG::Color::white()) == "#ffffff");
+    REQUIRE(static_cast<std::string>(SVG::Color::black()) == "#000000");
 }
 
 TEST_CASE("Color helpers reject invalid values", "[style]") {

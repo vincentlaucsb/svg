@@ -1,4 +1,4 @@
-<svg height="260" role="img" viewBox="0 0 720 260" width="720" xmlns="http://www.w3.org/2000/svg">
+<svg height="294.0" role="img" viewBox="-32.1 -17.0 784.3 294.0" width="784.3" xmlns="http://www.w3.org/2000/svg">
 	<style type="text/css">
 		<![CDATA[
 			.sign-panel {
@@ -18,11 +18,6 @@
 				stroke: var(--svg-open-scuff);
 				stroke-linecap: round;
 				stroke-width: 1.4;
-			}
-			.sign-shell {
-				transform: rotate(-1.2deg);
-				transform-box: fill-box;
-				transform-origin: center;
 			}
 			.sign-subtitle {
 				dominant-baseline: middle;
@@ -111,7 +106,7 @@
 		]]>
 	</style>
 	<title>SVG for C++ red neon sign</title>
-	<g class="sign-shell">
+	<g class="sign-shell" transform="rotate(-1.2 360.0 130.0)">
 		<rect class="sign-panel" height="212.0" rx="28" width="672.0" x="24.0" y="24.0" />
 		<rect class="sign-tube" height="176.0" rx="22" width="632.0" x="44.0" y="42.0" />
 		<circle class="sign-screw" cx="64.0" cy="58.0" r="6.0" />

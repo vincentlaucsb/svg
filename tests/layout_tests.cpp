@@ -28,6 +28,29 @@ TEST_CASE("autoscale computes nested child bounds", "[layout]") {
     REQUIRE(root.get_attr("viewBox") == "-200.0 -200.0 400.0 400.0");
 }
 
+TEST_CASE("autoscale includes page margins around positive coordinates", "[layout]") {
+    SVG::SVG root;
+    root.add_child<SVG::Rect>(100, 50, 20, 10);
+
+    root.autoscale({ 5, 15, 10, 20 });
+
+    REQUIRE(root.get_attr("width") == "40.0");
+    REQUIRE(root.get_attr("height") == "40.0");
+    REQUIRE(root.get_attr("viewBox") == "95.0 40.0 40.0 40.0");
+}
+
+TEST_CASE("autoscale includes simple rotate transforms", "[layout]") {
+    SVG::SVG root;
+    auto* rect = root.add_child<SVG::Rect>(0, 0, 10, 20);
+    rect->transform().rotate(90);
+
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(root.get_attr("width") == "20.0");
+    REQUIRE(root.get_attr("height") == "10.0");
+    REQUIRE(root.get_attr("viewBox") == "-20.0 0.0 20.0 10.0");
+}
+
 TEST_CASE("merge combines SVG documents horizontally", "[layout]") {
     auto s1 = two_circles(200, 200, 200);
     auto s2 = two_circles(200, 200, 200);

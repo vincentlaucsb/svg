@@ -220,8 +220,25 @@ namespace SVG {
             return mix(black(), amount);
         }
 
-        /** Return the serialized CSS color token. */
-        std::string str() const {
+        /** Common palette anchor for tinting and mixing. */
+        static Color white() {
+            return rgb(255, 255, 255);
+        }
+
+        /** Common palette anchor for shading and mixing. */
+        static Color black() {
+            return rgb(0, 0, 0);
+        }
+
+        /** Allow Color to be used anywhere an attribute accepts std::string. */
+        operator std::string() const {
+            return serialize();
+        }
+
+    private:
+        Color(uint8_t red, uint8_t green, uint8_t blue) : red_(red), green_(green), blue_(blue) {}
+
+        std::string serialize() const {
             std::ostringstream ss;
             ss << '#'
                << std::hex << std::setfill('0') << std::nouppercase
@@ -229,22 +246,6 @@ namespace SVG {
                << std::setw(2) << static_cast<int>(green_)
                << std::setw(2) << static_cast<int>(blue_);
             return ss.str();
-        }
-
-        /** Allow Color to be used anywhere an attribute accepts std::string. */
-        operator std::string() const {
-            return str();
-        }
-
-    private:
-        Color(uint8_t red, uint8_t green, uint8_t blue) : red_(red), green_(green), blue_(blue) {}
-
-        static Color white() {
-            return rgb(255, 255, 255);
-        }
-
-        static Color black() {
-            return rgb(0, 0, 0);
         }
 
         static uint8_t channel(int value) {
@@ -348,6 +349,107 @@ namespace SVG {
         template<typename T, typename... Args>
         std::unique_ptr<T> make_child(Args&&... args) {
             return make_child_impl<T>(last_is_attrs<Args...>{}, std::forward<Args>(args)...);
+        }
+
+        struct AffineTransform {
+            AffineTransform() = default;
+            AffineTransform(double a_, double b_, double c_, double d_, double e_, double f_) :
+                    a(a_), b(b_), c(c_), d(d_), e(e_), f(f_) {}
+
+            double a = 1;
+            double b = 0;
+            double c = 0;
+            double d = 1;
+            double e = 0;
+            double f = 0;
+
+            Point apply(Point point) const {
+                return {
+                    a * point.first + c * point.second + e,
+                    b * point.first + d * point.second + f
+                };
+            }
+        };
+
+        inline AffineTransform multiply(const AffineTransform& left, const AffineTransform& right) {
+            return {
+                left.a * right.a + left.c * right.b,
+                left.b * right.a + left.d * right.b,
+                left.a * right.c + left.c * right.d,
+                left.b * right.c + left.d * right.d,
+                left.a * right.e + left.c * right.f + left.e,
+                left.b * right.e + left.d * right.f + left.f
+            };
+        }
+
+        inline AffineTransform rotate_transform(double degrees, double cx = 0, double cy = 0) {
+            const auto radians = degrees * PI / 180.0;
+            const auto cos_value = std::cos(radians);
+            const auto sin_value = std::sin(radians);
+            return {
+                cos_value,
+                sin_value,
+                -sin_value,
+                cos_value,
+                cx - cos_value * cx + sin_value * cy,
+                cy - sin_value * cx - cos_value * cy
+            };
+        }
+
+        inline std::vector<double> parse_transform_args(std::string args) {
+            for (auto& ch : args) {
+                if (ch == ',') {
+                    ch = ' ';
+                }
+            }
+
+            std::istringstream stream(args);
+            std::vector<double> values;
+            double value;
+            while (stream >> value) {
+                values.push_back(value);
+            }
+            return values;
+        }
+
+        inline AffineTransform parse_supported_transform(const std::string& transform) {
+            AffineTransform current;
+            size_t pos = 0;
+            while (pos < transform.size()) {
+                while (pos < transform.size() && std::isspace(static_cast<unsigned char>(transform[pos]))) {
+                    ++pos;
+                }
+                const auto name_start = pos;
+                while (pos < transform.size() && std::isalpha(static_cast<unsigned char>(transform[pos]))) {
+                    ++pos;
+                }
+                if (name_start == pos) {
+                    break;
+                }
+
+                const auto name = transform.substr(name_start, pos - name_start);
+                while (pos < transform.size() && std::isspace(static_cast<unsigned char>(transform[pos]))) {
+                    ++pos;
+                }
+                if (pos >= transform.size() || transform[pos] != '(') {
+                    break;
+                }
+                const auto args_start = ++pos;
+                const auto args_end = transform.find(')', args_start);
+                if (args_end == std::string::npos) {
+                    break;
+                }
+                pos = args_end + 1;
+
+                const auto args = parse_transform_args(transform.substr(args_start, args_end - args_start));
+                if (name == "rotate" && (args.size() == 1 || args.size() == 3)) {
+                    current = multiply(
+                        current,
+                        args.size() == 1 ? rotate_transform(args[0])
+                                         : rotate_transform(args[0], args[1], args[2]));
+                }
+            }
+            return current;
         }
     }
     /** @endcond */
@@ -724,7 +826,7 @@ namespace SVG {
 
     inline std::string to_string(const Color& color) {
         /** Return the serialized CSS color token. */
-        return color.str();
+        return static_cast<std::string>(color);
     }
 
     inline std::string escape_xml(const std::string& text) {
@@ -768,7 +870,7 @@ namespace SVG {
 
             /** Append a serialized color token to the attribute value. */
             AttrSetter& operator<<(const Color& value) {
-                attr_ += value.str();
+                attr_ += static_cast<std::string>(value);
                 normalize();
                 notify();
                 return *this;
@@ -920,7 +1022,7 @@ namespace SVG {
     }
 
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const Color& value) {
-        this->set_attr_value(key, value.str());
+        this->set_attr_value(key, static_cast<std::string>(value));
         return *this;
     }
 
@@ -1292,6 +1394,7 @@ namespace SVG {
         using ChildIterator = std::vector<std::unique_ptr<Element>>::iterator;
         std::vector<Element*> get_children_helper();
         void get_bbox(Element::BoundingBox&);
+        void get_bbox(Element::BoundingBox&, const detail::AffineTransform& parent_transform);
         virtual std::string svg_to_string(const size_t indent_level); /** SVG string corresponding to this element */
         virtual std::string tag() { return tag_name(this->kind()); } /** The SVG tag of this element */
 
@@ -2137,8 +2240,8 @@ using G = Group;
         /** Like other autoscale() but accepts margin as a percentage */
         Element::BoundingBox bbox = this->get_bbox();
         this->get_bbox(bbox);
-        double width = abs(bbox.x1) + abs(bbox.x2),
-            height = abs(bbox.y1) + abs(bbox.y2);
+        double width = bbox.x2 - bbox.x1,
+            height = bbox.y2 - bbox.y1;
 
         this->autoscale({
             width * margin, width * margin,
@@ -2156,29 +2259,50 @@ using G = Group;
 
         Element::BoundingBox bbox = this->get_bbox();
         this->get_bbox(bbox); // Compute the bounding box (recursive)
-        double width = abs(bbox.x1) + abs(bbox.x2) + margins.x1 + margins.x2,
-            height = abs(bbox.y1) + abs(bbox.y2) + margins.y1 + margins.y2,
+        double width = bbox.x2 - bbox.x1 + margins.x1 + margins.x2,
+            height = bbox.y2 - bbox.y1 + margins.y1 + margins.y2,
             x1 = bbox.x1 - margins.x1, y1 = bbox.y1 - margins.y1;
 
         this->set_attr("width", width)
              .set_attr("height", height);
 
-        if (x1 < 0 || y1 < 0) {
-            std::stringstream viewbox;
-            viewbox << std::fixed << std::setprecision(1)
-                << x1 << " " // min-x
-                << y1 << " " // min-y
-                << width << " "
-                << height;
-            this->set_attr("viewBox", viewbox.str());
-        }
+        std::stringstream viewbox;
+        viewbox << std::fixed << std::setprecision(1)
+            << x1 << " " // min-x
+            << y1 << " " // min-y
+            << width << " "
+            << height;
+        this->set_attr("viewBox", viewbox.str());
     }
 
     inline void Element::get_bbox(Element::BoundingBox& box) {
         /** Recursively compute a bounding box */
+        this->get_bbox(box, detail::AffineTransform());
+    }
+
+    inline void Element::get_bbox(Element::BoundingBox& box, const detail::AffineTransform& parent_transform) {
+        /** Recursively compute a transform-aware bounding box */
+        auto transform = parent_transform;
+        if (this->has_attr("transform")) {
+            transform = detail::multiply(transform, detail::parse_supported_transform(this->get_attr("transform")));
+        }
+
         auto this_bbox = this->get_bbox();
-        box = this_bbox + box; // Take union of both
-        for (auto& child: this->children) child->get_bbox(box); // Recursion
+        if (!std::isnan(this_bbox.x1) && !std::isnan(this_bbox.x2) &&
+                !std::isnan(this_bbox.y1) && !std::isnan(this_bbox.y2)) {
+            const auto p1 = transform.apply({ this_bbox.x1, this_bbox.y1 });
+            const auto p2 = transform.apply({ this_bbox.x2, this_bbox.y1 });
+            const auto p3 = transform.apply({ this_bbox.x2, this_bbox.y2 });
+            const auto p4 = transform.apply({ this_bbox.x1, this_bbox.y2 });
+            Element::BoundingBox transformed_box(
+                std::min(std::min(p1.first, p2.first), std::min(p3.first, p4.first)),
+                std::max(std::max(p1.first, p2.first), std::max(p3.first, p4.first)),
+                std::min(std::min(p1.second, p2.second), std::min(p3.second, p4.second)),
+                std::max(std::max(p1.second, p2.second), std::max(p3.second, p4.second)));
+            box = transformed_box + box;
+        }
+
+        for (auto& child: this->children) child->get_bbox(box, transform);
     }
 
     inline Element::ChildMap Element::get_children() {

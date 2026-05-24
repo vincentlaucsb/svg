@@ -46,9 +46,6 @@ struct SignTheme {
 SVG::SVG make_sign(const SignTheme& theme) {
     SVG::SVG root({
         { "xmlns", "http://www.w3.org/2000/svg" },
-        { "width", "720" },
-        { "height", "260" },
-        { "viewBox", "0 0 720 260" },
         { "role", "img" }
     });
     root.add_child<SVG::Title>("SVG for C++ " + theme.title + " neon sign");
@@ -76,11 +73,6 @@ SVG::SVG make_sign(const SignTheme& theme) {
     });
 
     root
-        .style(classes.selector(SignClass::shell), SVG::Attrs{
-            { "transform-box", "fill-box" },
-            { "transform-origin", "center" },
-            { "transform", "rotate(-1.2deg)" }
-        })
         .style(classes.selector(SignClass::panel), SVG::Attrs{
             { "fill", vars.var(SignVar::panel) },
             { "stroke", vars.var(SignVar::panel_stroke) },
@@ -172,6 +164,7 @@ SVG::SVG make_sign(const SignTheme& theme) {
     });
 
     auto* sign = root.add_child<SVG::Group>(SVG::Attrs{{ "class", classes.classes(SignClass::shell) }});
+    sign->transform().rotate(-1.2, 360, 130);
 
     sign->add_child<SVG::Rect>(
         24, 24, 672, 212,
@@ -195,6 +188,7 @@ SVG::SVG make_sign(const SignTheme& theme) {
     word->add_child<SVG::Text>(470, 128, "G");
     sign->add_child<SVG::Text>(518, 182, "for C++", SVG::Attrs{{ "class", classes.classes(SignClass::subtitle) }});
 
+    root.autoscale({ 54, 54, 34, 34 });
     return root;
 }
 
@@ -210,9 +204,9 @@ SVG::SVG make_swatch(const SignTheme& theme) {
     root.add_child<SVG::Rect>(
         1, 1, 62, 16,
         SVG::Attrs{
-            { "fill", theme.accent.str() },
+            { "fill", theme.accent },
             { "rx", "4" },
-            { "stroke", theme.accent.tint(0.68).str() },
+            { "stroke", theme.accent.tint(0.68) },
             { "stroke-width", "2" }
         });
     return root;
