@@ -28,11 +28,27 @@ TEST_CASE("Templated get_children filters descendants by exact type", "[traversa
     std::vector<SVG::Circle*> circles = root.get_children<SVG::Circle>();
 
     REQUIRE(SVG::tag_name(SVG::Circle::static_kind) == "circle");
+    REQUIRE(SVG::tag_name(SVG::Title::static_kind) == "title");
     REQUIRE(groups.front()->kind() == SVG::ElementKind::Group);
     REQUIRE(circles.front()->kind() == SVG::ElementKind::Circle);
     REQUIRE(containers.size() == 0);
     REQUIRE(groups.size() == 1);
     REQUIRE(circles.size() == 2);
+}
+
+TEST_CASE("Built-in elements return their specific kinds", "[traversal]") {
+    SVG::Title title("Chart summary");
+    SVG::Circle circle;
+
+    REQUIRE(title.kind() == SVG::ElementKind::Title);
+    REQUIRE(circle.kind() == SVG::ElementKind::Circle);
+}
+
+TEST_CASE("G aliases Group", "[traversal]") {
+    SVG::G group;
+
+    REQUIRE(group.kind() == SVG::ElementKind::Group);
+    REQUIRE(SVG::tag_name(group.kind()) == "g");
 }
 
 TEST_CASE("get_element_by_id finds nested elements", "[traversal]") {

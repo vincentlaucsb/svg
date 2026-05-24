@@ -16,6 +16,9 @@ target_compile_features(svg INTERFACE cxx_std_11)
 add_executable(basic examples/basic.cpp)
 target_link_libraries(basic PRIVATE svg)
 
+add_executable(open_sign examples/open_sign.cpp)
+target_link_libraries(open_sign PRIVATE svg)
+
 include(CTest)
 if(BUILD_TESTING)
     include(FetchContent)

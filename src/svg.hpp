@@ -50,6 +50,7 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits> // is_base_of
+#include <tuple>
 #include <utility>
 
 namespace SVG {
@@ -62,6 +63,7 @@ namespace SVG {
     class Symbol;
     class Use;
 
+    /** Stable element categories used for typed lookup without requiring RTTI. */
     enum class ElementKind {
         Custom,
         Defs,
@@ -71,6 +73,7 @@ namespace SVG {
         Style,
         Path,
         Text,
+        Title,
         Group,
         Line,
         Rect,
@@ -78,6 +81,7 @@ namespace SVG {
         Polygon
     };
 
+    /** Return the native SVG tag name for a built-in kind, or an empty string for Custom. */
     inline std::string tag_name(ElementKind kind) {
         switch (kind) {
             case ElementKind::Defs: return "defs";
@@ -87,6 +91,7 @@ namespace SVG {
             case ElementKind::Style: return "style";
             case ElementKind::Path: return "path";
             case ElementKind::Text: return "text";
+            case ElementKind::Title: return "title";
             case ElementKind::Group: return "g";
             case ElementKind::Line: return "line";
             case ElementKind::Rect: return "rect";
@@ -107,6 +112,10 @@ namespace SVG {
     /** A mapping of CSS selectors to their corresponding style attributes */
     using SelectorProperties = std::map<std::string, AttributeMap>;
     using SVGAttrib = std::map<std::string, std::string>;
+    /** Explicit wrapper for trailing add_child() attributes. */
+    struct Attrs : SVGAttrib {
+        using SVGAttrib::SVGAttrib;
+    };
     using Point = std::pair<double, double>;
     using Margins = QuadCoord;
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
@@ -125,9 +134,65 @@ namespace SVG {
     }
 #endif
 
+    /** @cond */
+    namespace detail {
+        template<size_t... I>
+        struct index_sequence {};
+
+        template<size_t N, size_t... I>
+        struct make_index_sequence : make_index_sequence<N - 1, N - 1, I...> {};
+
+        template<size_t... I>
+        struct make_index_sequence<0, I...> {
+            using type = index_sequence<I...>;
+        };
+
+        template<typename T>
+        struct is_attrs : std::is_same<typename std::decay<T>::type, Attrs> {};
+
+        template<typename... Args>
+        struct last_is_attrs : std::false_type {};
+
+        template<typename T>
+        struct last_is_attrs<T> : is_attrs<T> {};
+
+        template<typename T, typename... Rest>
+        struct last_is_attrs<T, Rest...> : last_is_attrs<Rest...> {};
+
+        template<typename T, typename Tuple, size_t... I>
+        std::unique_ptr<T> make_child_with_attrs(Tuple&& tuple, index_sequence<I...>) {
+            const auto attrs = std::get<sizeof...(I)>(tuple);
+            auto child = detail::make_unique<T>(std::get<I>(std::move(tuple))...);
+            for (const auto& attr : attrs) {
+                child->set_attr(attr.first, attr.second);
+            }
+            return child;
+        }
+
+        template<typename T, typename... Args>
+        std::unique_ptr<T> make_child_impl(std::false_type, Args&&... args) {
+            return detail::make_unique<T>(std::forward<Args>(args)...);
+        }
+
+        template<typename T, typename... Args>
+        std::unique_ptr<T> make_child_impl(std::true_type, Args&&... args) {
+            auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
+            return make_child_with_attrs<T>(
+                std::move(tuple),
+                typename make_index_sequence<sizeof...(Args) - 1>::type{});
+        }
+
+        template<typename T, typename... Args>
+        std::unique_ptr<T> make_child(Args&&... args) {
+            return make_child_impl<T>(last_is_attrs<Args...>{}, std::forward<Args>(args)...);
+        }
+    }
+    /** @endcond */
+
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
     inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level=0);
+    /** Escape text for XML element content or attribute values. */
     inline std::string escape_xml(const std::string& text);
 
     std::vector<Point> bounding_polygon(const std::vector<Shape*>& shapes);
@@ -589,6 +654,15 @@ namespace SVG {
             return *this;
         }
 
+        /** Set multiple attributes from an existing attribute map. */
+        AttributeMap& set_attrs(const SVGAttrib& values) {
+            for (const auto& pair : values) {
+                this->set_attr_value(pair.first, pair.second);
+            }
+
+            return *this;
+        }
+
         AttrSetter set_attr(const std::string key) {
             return this->make_attr_setter(key);
         };
@@ -678,6 +752,242 @@ namespace SVG {
         return *this;
     }
 
+    /** Shared enum-to-string map for typed CSS helpers. */
+    template<typename T>
+    class TypedNames {
+        static_assert(std::is_enum<T>::value, "Typed CSS keys must be an enum type.");
+
+    public:
+        /** Return the canonical CSS name for a typed key. */
+        std::string name(T key) const {
+            const auto found = this->names_.find(key);
+            if (found == this->names_.end()) {
+                throw std::invalid_argument("Unknown typed CSS key");
+            }
+            return found->second;
+        }
+
+    protected:
+        /** Add one validated typed key/name pair. */
+        void add_name(T key, const std::string& normalized_name, const std::string& duplicate_label) {
+            if (this->names_.find(key) != this->names_.end()) {
+                throw std::invalid_argument("Duplicate typed CSS key");
+            }
+            if (this->used_names_.find(normalized_name) != this->used_names_.end()) {
+                throw std::invalid_argument("Duplicate " + duplicate_label + ": " + normalized_name);
+            }
+
+            this->names_[key] = normalized_name;
+            this->used_names_[normalized_name] = key;
+        }
+
+    private:
+        /** Enum-to-name mapping for this helper. */
+        std::map<T, std::string> names_;
+        /** Reverse map used to reject duplicate output names. */
+        std::map<std::string, T> used_names_;
+    };
+
+    /** Mapping entry for a typed CSS custom property, optionally with an initial value. */
+    template<typename T>
+    struct VariableSpec {
+        /** Typed variable key. */
+        T key;
+        /** CSS custom property name, normalized to include a leading "--" by Variables. */
+        std::string css_name;
+        /** True when this spec also provides an initial value. */
+        bool has_value = false;
+        /** Initial CSS custom property value. */
+        std::string value;
+
+        /** Register a typed key and CSS custom property name without setting a value. */
+        VariableSpec(T _key, std::string _css_name) :
+                key(_key), css_name(std::move(_css_name)) {}
+
+        /** Register a typed key and CSS custom property name, then set its initial value. */
+        VariableSpec(T _key, std::string _css_name, std::string _value) :
+                key(_key),
+                css_name(std::move(_css_name)),
+                has_value(true),
+                value(std::move(_value)) {}
+    };
+
+    /** Mapping entry for a typed CSS class token. */
+    template<typename T>
+    struct ClassSpec {
+        /** Typed class key. */
+        T key;
+        /** CSS class token, normalized by Classes to omit any leading ".". */
+        std::string css_class;
+
+        /** Register a typed key and CSS class token. */
+        ClassSpec(T _key, std::string _css_class) :
+                key(_key), css_class(std::move(_css_class)) {}
+    };
+
+    /** Typed helper for defining and referencing CSS custom properties without stringly lookups. */
+    template<typename T>
+    class Variables : public TypedNames<T> {
+    public:
+        /** Validate the enum-to-name map and apply any initial values to the target style block. */
+        Variables(AttributeMap& target, std::initializer_list<VariableSpec<T>> specs) :
+                target_(&target) {
+            std::vector<std::pair<T, std::string>> initial_values;
+
+            for (const auto& spec : specs) {
+                const auto normalized_name = normalize_name(spec.css_name);
+                this->add_name(spec.key, normalized_name, "CSS variable name");
+                if (spec.has_value) {
+                    initial_values.push_back({ spec.key, spec.value });
+                }
+            }
+
+            for (const auto& initial : initial_values) {
+                this->set(initial.first, initial.second);
+            }
+        }
+
+        /** Return a CSS var() reference for a typed key. */
+        std::string var(T key) const {
+            return "var(" + this->name(key) + ")";
+        }
+
+        /** Set a CSS custom property value in the bound style block. */
+        Variables& set(T key, const std::string& value) {
+            this->target_->set_attr(this->name(key), value);
+            return *this;
+        }
+
+        /** Set a CSS custom property value from a string literal. */
+        Variables& set(T key, const char* value) {
+            return this->set(key, std::string(value));
+        }
+
+        /** Replace numbered placeholders like "{0}" with typed var() references. */
+        template<typename... Keys>
+        std::string format(const std::string& pattern, Keys... keys) const {
+            std::vector<std::string> args = { this->var(keys)... };
+            std::vector<bool> used(args.size(), false);
+            std::string out;
+
+            for (size_t i = 0; i < pattern.size(); ++i) {
+                if (pattern[i] == '{') {
+                    if (i + 1 < pattern.size() && pattern[i + 1] == '{') {
+                        out.push_back('{');
+                        ++i;
+                        continue;
+                    }
+
+                    const auto start = i + 1;
+                    auto pos = start;
+                    size_t index = 0;
+                    while (pos < pattern.size() && std::isdigit(static_cast<unsigned char>(pattern[pos]))) {
+                        index = index * 10 + static_cast<size_t>(pattern[pos] - '0');
+                        ++pos;
+                    }
+                    if (pos == start || pos >= pattern.size() || pattern[pos] != '}') {
+                        throw std::invalid_argument("Malformed CSS variable format placeholder");
+                    }
+                    if (index >= args.size()) {
+                        throw std::invalid_argument("CSS variable format placeholder index out of range");
+                    }
+
+                    out += args[index];
+                    used[index] = true;
+                    i = pos;
+                } else if (pattern[i] == '}') {
+                    if (i + 1 < pattern.size() && pattern[i + 1] == '}') {
+                        out.push_back('}');
+                        ++i;
+                        continue;
+                    }
+                    throw std::invalid_argument("Unmatched CSS variable format brace");
+                } else {
+                    out.push_back(pattern[i]);
+                }
+            }
+
+            for (const auto was_used : used) {
+                if (!was_used) {
+                    throw std::invalid_argument("Unused CSS variable format argument");
+                }
+            }
+
+            return out;
+        }
+
+    private:
+        /** Return a valid CSS custom property name, accepting user input with or without "--". */
+        static std::string normalize_name(const std::string& css_name) {
+            if (css_name.empty()) {
+                throw std::invalid_argument("CSS variable name cannot be empty");
+            }
+            if (css_name.size() >= 2 && css_name[0] == '-' && css_name[1] == '-') {
+                return css_name;
+            }
+            return "--" + css_name;
+        }
+
+        /** Style block that receives set() writes. */
+        AttributeMap* target_;
+    };
+
+    /** Typed helper for building class attributes and class selectors without stringly lookups. */
+    template<typename T>
+    class Classes : public TypedNames<T> {
+    public:
+        /** Validate and register typed CSS class tokens. */
+        Classes(std::initializer_list<ClassSpec<T>> specs) {
+            for (const auto& spec : specs) {
+                this->add_name(spec.key, normalize_name(spec.css_class), "CSS class name");
+            }
+        }
+
+        /** Return a CSS selector for one class or a combined selector for multiple classes. */
+        template<typename... Keys>
+        std::string selector(Keys... keys) const {
+            const auto names = this->names(keys...);
+            std::string out;
+            for (const auto& name : names) {
+                out += "." + name;
+            }
+            return out;
+        }
+
+        /** Return a space-separated class attribute value. */
+        template<typename... Keys>
+        std::string classes(Keys... keys) const {
+            const auto names = this->names(keys...);
+            std::string out;
+            for (const auto& name : names) {
+                if (!out.empty()) out += " ";
+                out += name;
+            }
+            return out;
+        }
+
+    private:
+        static std::string normalize_name(std::string css_class) {
+            if (!css_class.empty() && css_class[0] == '.') {
+                css_class.erase(0, 1);
+            }
+            if (css_class.empty()) {
+                throw std::invalid_argument("CSS class name cannot be empty");
+            }
+            for (const auto ch : css_class) {
+                if (std::isspace(static_cast<unsigned char>(ch))) {
+                    throw std::invalid_argument("CSS class name cannot contain whitespace");
+                }
+            }
+            return css_class;
+        }
+
+        template<typename... Keys>
+        std::vector<std::string> names(Keys... keys) const {
+            return std::vector<std::string>{ this->name(keys)... };
+        }
+    };
+
     /** @class Element
      *  @brief Abstract base class for all SVG elements
      */
@@ -741,7 +1051,7 @@ namespace SVG {
         T* add_child(Args&&... args) {
             /** Add an SVG element as a child and return a pointer to the element added */
             SVG_TYPE_CHECK;
-            auto child = detail::make_unique<T>(std::forward<Args>(args)...);
+            auto child = detail::make_child<T>(std::forward<Args>(args)...);
             return static_cast<T*>(this->insert_child(std::move(child), this->children.end()));
         }
 
@@ -782,7 +1092,8 @@ namespace SVG {
         Element* get_element_by_id(const std::string& id);
         std::vector<Element*> get_elements_by_class(const std::string& clsname);
         const Element* parent() const { return parent_; }
-        virtual ElementKind kind() const = 0;
+        /** Return the element category used by typed traversal; custom subclasses default to Custom. */
+        virtual ElementKind kind() const { return ElementKind::Custom; }
         Element& id(const std::string& value);
         std::string id() const;
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
@@ -921,14 +1232,17 @@ namespace SVG {
         }
     };
 
+    /** Container for reusable SVG definitions such as symbols. */
     class Defs : public Element {
     public:
         static constexpr ElementKind static_kind = ElementKind::Defs;
         using Element::Element;
         ElementKind kind() const override { return static_kind; }
+        /** Return an existing symbol with this id, or create one when absent. */
         Symbol* symbol(std::string id);
     };
 
+    /** Reusable element definition that can be instantiated with Use. */
     class Symbol : public Element {
     public:
         static constexpr ElementKind static_kind = ElementKind::Symbol;
@@ -939,12 +1253,16 @@ namespace SVG {
             this->id(id);
         }
 
+        /** Return this symbol's fragment reference, requiring the symbol to have an id. */
         std::string href() const;
         ElementKind kind() const override { return static_kind; }
+        /** Create a use element that references this symbol. */
         Use use(double x, double y) const;
+        /** Create a sized use element that references this symbol. */
         Use use(double x, double y, double width, double height) const;
     };
 
+    /** Instance of a reusable SVG element referenced by href. */
     class Use : public Shape {
     public:
         static constexpr ElementKind static_kind = ElementKind::Use;
@@ -966,6 +1284,7 @@ namespace SVG {
             set_attr("height", height);
         }
 
+        /** Set the legacy xlink:href reference for older SVG consumers. */
         Use& xlink_href(std::string href) {
             set_attr("xlink:href", std::move(href));
             return *this;
@@ -994,8 +1313,8 @@ namespace SVG {
             std::string svg_to_string(const size_t) override;
         };
 
-        /**< Create an <svg> with specified attributes */
         static constexpr ElementKind static_kind = ElementKind::SVG;
+        /** Create an SVG root element with the default namespace unless attributes override it. */
         SVG(SVGAttrib _attr =
                 { { "xmlns", "http://www.w3.org/2000/svg" } }
         ) : Shape(_attr) {
@@ -1029,9 +1348,41 @@ namespace SVG {
         /** Retrieve a handle corresponding to the given CSS selector */
         AttributeMap& style(const std::string& key) { return this->css->css[key]; }
 
+        /** Set selector styles from Attrs and return the SVG for chaining. */
+        SVG& style(const std::string& key, const Attrs& attrs) {
+            this->style(key).set_attrs(attrs);
+            return *this;
+        }
+
         /** Retrieve a handle corresponding to a selector within a CSS media query */
         AttributeMap& media_style(const std::string& query, const std::string& key) {
             return this->css->media_queries[query][key];
+        }
+
+        /** Set media-query selector styles from Attrs and return the SVG for chaining. */
+        SVG& media_style(const std::string& query, const std::string& key, const Attrs& attrs) {
+            this->media_style(query, key).set_attrs(attrs);
+            return *this;
+        }
+
+        /** Define typed CSS custom properties in the :root style block. */
+        template<typename T>
+        Variables<T> set_vars(std::initializer_list<VariableSpec<T>> specs) {
+            return this->set_vars<T>(":root", specs);
+        }
+
+        /** Define typed CSS custom properties in a selector style block. */
+        template<typename T>
+        Variables<T> set_vars(const std::string& selector, std::initializer_list<VariableSpec<T>> specs) {
+            return Variables<T>(this->style(selector), specs);
+        }
+
+        /** Define typed CSS custom properties in a selector inside a media query. */
+        template<typename T>
+        Variables<T> set_vars(const std::string& query,
+                              const std::string& selector,
+                              std::initializer_list<VariableSpec<T>> specs) {
+            return Variables<T>(this->media_style(query, selector), specs);
         }
 
         std::map<std::string, AttributeMap>& keyframes(const std::string& key) {
@@ -1043,6 +1394,7 @@ namespace SVG {
             return this->css->keyframes[key];
         }
 
+        /** Return the document's singleton defs element, creating it after styles when needed. */
         Defs* defs() {
             if (!this->defs_) this->defs_ = this->add_child<Defs>();
             return this->defs_;
@@ -1057,7 +1409,7 @@ namespace SVG {
         typename std::enable_if<std::is_same<T, Defs>::value, T*>::type add_child(Args&&... args) {
             if (this->defs_) return this->defs_;
 
-            auto child = detail::make_unique<T>(std::forward<Args>(args)...);
+            auto child = detail::make_child<T>(std::forward<Args>(args)...);
             auto* inserted = static_cast<T*>(
                 this->insert_child(std::move(child), this->defs_insert_position()));
             this->defs_ = inserted;
@@ -1069,6 +1421,7 @@ namespace SVG {
             return found == this->id_index_.end() ? nullptr : found->second;
         }
 
+        /** Return an element by id only when its built-in kind matches T::static_kind. */
         template<typename T>
         T* get_element_by_id(const std::string& id) {
             SVG_TYPE_CHECK;
@@ -1301,6 +1654,7 @@ namespace SVG {
         double y_start;
     };
 
+    /** Text positioned with x/y coordinates. */
     class Text : public Element {
     public:
         static constexpr ElementKind static_kind = ElementKind::Text;
@@ -1322,12 +1676,33 @@ namespace SVG {
         std::string svg_to_string(const size_t) override;
     };
 
+    /** Native SVG title element whose content is XML-escaped when serialized. */
+    class Title : public Element {
+    public:
+        /** Element kind used for kind-based typed lookup. */
+        static constexpr ElementKind static_kind = ElementKind::Title;
+        Title() = default;
+        /** Construct a title from text content, not an id attribute. */
+        explicit Title(const char* _content) : content(_content) {}
+        /** Construct a title from text content, not an id attribute. */
+        explicit Title(std::string _content) : content(std::move(_content)) {}
+        ElementKind kind() const override { return static_kind; }
+
+    protected:
+        /** Unescaped title text; escaping is applied during serialization. */
+        std::string content;
+        /** Serialize as an XML-escaped title element. */
+        std::string svg_to_string(const size_t) override;
+    };
+
     class Group : public Element {
     public:
         static constexpr ElementKind static_kind = ElementKind::Group;
         using Element::Element;
         ElementKind kind() const override { return static_kind; }
     };
+/** Short alias for Group, matching SVG's native @c g tag name. */
+using G = Group;
 
     class Line : public Shape {
     public:
@@ -1505,6 +1880,20 @@ namespace SVG {
         return ret += " />";
     }
 
+    namespace detail {
+        /** Shared serializer for elements whose children are escaped text content. */
+        inline std::string text_content_element_to_string(const Element& element,
+                                                          const std::string& tag,
+                                                          const std::string& content,
+                                                          const size_t indent_level) {
+            auto indent = std::string(indent_level, '\t');
+            std::string ret = indent + "<" + tag;
+            for (auto& pair: element.attrs())
+                ret += " " + pair.first + "=" + "\"" + escape_xml(pair.second) + "\"";
+            return ret += ">" + escape_xml(content) + "</" + tag + ">";
+        }
+    }
+
     inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level) {
         /** Print out a CSS attribute block */
         auto indent = std::string(indent_level, '\t'), ret = std::string();
@@ -1551,11 +1940,11 @@ namespace SVG {
     }
 
     inline std::string Text::svg_to_string(const size_t indent_level) {
-        auto indent = std::string(indent_level, '\t');
-        std::string ret = indent + "<text";
-        for (auto& pair: attrs())
-            ret += " " + pair.first + "=" + "\"" + escape_xml(pair.second) + "\"";
-        return ret += ">" + escape_xml(this->content) + "</text>";
+        return detail::text_content_element_to_string(*this, tag_name(this->kind()), this->content, indent_level);
+    }
+
+    inline std::string Title::svg_to_string(const size_t indent_level) {
+        return detail::text_content_element_to_string(*this, tag_name(this->kind()), this->content, indent_level);
     }
 
     inline void Element::autoscale(const double margin) {

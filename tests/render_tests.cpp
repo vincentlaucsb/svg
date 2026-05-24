@@ -5,9 +5,7 @@
 namespace {
     class CustomFilter : public SVG::Element {
     public:
-        static constexpr SVG::ElementKind static_kind = SVG::ElementKind::Custom;
         using SVG::Element::Element;
-        SVG::ElementKind kind() const override { return static_kind; }
 
     protected:
         std::string tag() override { return "feGaussianBlur"; }
@@ -36,6 +34,22 @@ TEST_CASE("Nested elements serialize with proper indentation", "[render]") {
     REQUIRE(std::string(root) == correct);
 }
 
+TEST_CASE("add_child applies trailing Attrs after construction", "[render]") {
+    SVG::SVG root;
+    auto* group = root.add_child<SVG::Group>(SVG::Attrs{{ "class", "plot marks" }});
+    auto* label = group->add_child<SVG::Text>(
+        12, 24, "Volume",
+        SVG::Attrs{{ "class", "axis-label" }, { "data-side", "left" }});
+
+    const std::string svg = root;
+
+    REQUIRE(group->get_attr("class") == "plot marks");
+    REQUIRE(label->get_attr("data-side") == "left");
+    REQUIRE(svg.find("<g class=\"plot marks\">") != std::string::npos);
+    REQUIRE(svg.find("<text class=\"axis-label\" data-side=\"left\" x=\"12.0\" y=\"24.0\">Volume</text>") !=
+            std::string::npos);
+}
+
 TEST_CASE("Doubles serialize to one decimal place", "[render]") {
     SVG::SVG root;
     root.add_child<SVG::Line>(0.0, 0.0, PI, PI);
@@ -51,6 +65,14 @@ TEST_CASE("Text serializes content between tags", "[render]") {
     root.add_child<SVG::Text>(10, 20, "Workout");
 
     REQUIRE(std::string(root).find("<text x=\"10.0\" y=\"20.0\">Workout</text>") != std::string::npos);
+}
+
+TEST_CASE("Title serializes escaped content between tags", "[render]") {
+    SVG::SVG root;
+    root.add_child<SVG::Title>("A & B < C \"D\" 'E'");
+
+    REQUIRE(std::string(root).find("<title>A &amp; B &lt; C &quot;D&quot; &apos;E&apos;</title>") !=
+            std::string::npos);
 }
 
 TEST_CASE("XML-sensitive values are escaped when rendering", "[render]") {
@@ -119,5 +141,6 @@ TEST_CASE("Custom elements serialize custom tags and support untyped lookup", "[
     const std::string svg = root;
 
     REQUIRE(root.get_element_by_id("blur") == blur);
+    REQUIRE(blur->kind() == SVG::ElementKind::Custom);
     REQUIRE(svg.find("<feGaussianBlur id=\"blur\" stdDeviation=\"2\" />") != std::string::npos);
 }

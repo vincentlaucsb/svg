@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="examples/svg-open-sign.svg" alt="SVG for C++" width="680">
+</p>
+
 # SVG for C++
 
 [![C++](https://github.com/vincentlaucsb/svg/actions/workflows/cpp.yml/badge.svg)](https://github.com/vincentlaucsb/svg/actions/workflows/cpp.yml) [![codecov](https://codecov.io/gh/vincentlaucsb/svg/branch/master/graph/badge.svg)](https://codecov.io/gh/vincentlaucsb/svg)
