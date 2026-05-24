@@ -59,15 +59,15 @@
 				text-anchor: middle;
 			}
 			:root {
-				--svg-open-glow: #ff64dd;
-				--svg-open-panel: #140611;
-				--svg-open-panel-stroke: #561a49;
-				--svg-open-screw-fill: #271a24;
-				--svg-open-screw-stroke: #5f495a;
-				--svg-open-scuff: #d9b6d1;
-				--svg-open-text: #ffd8f6;
-				--svg-open-tube: #ff4fd8;
-				--svg-open-word-stroke: #fff1fc;
+				--svg-open-glow: #64b2ff;
+				--svg-open-panel: #060d14;
+				--svg-open-panel-stroke: #1a3856;
+				--svg-open-screw-fill: #1a2027;
+				--svg-open-screw-stroke: #49545f;
+				--svg-open-scuff: #b6c8d9;
+				--svg-open-text: #d8ecff;
+				--svg-open-tube: #4fa8ff;
+				--svg-open-word-stroke: #f1f8ff;
 			}
 			@media (prefers-reduced-motion: reduce) {
 				.sign-tube {
@@ -110,7 +110,7 @@
 			}
 		]]>
 	</style>
-	<title>SVG for C++ pink neon sign</title>
+	<title>SVG for C++ blue neon sign</title>
 	<g class="sign-shell">
 		<rect class="sign-panel" height="212.0" rx="28" width="672.0" x="24.0" y="24.0" />
 		<rect class="sign-tube" height="176.0" rx="22" width="632.0" x="44.0" y="42.0" />

@@ -1,5 +1,12 @@
 <p align="center">
   <img src="examples/svg-open-sign.svg" alt="SVG for C++" width="680">
+  <br>
+  <a href="examples/open_sign.cpp">See the C++ code for this logo</a>
+  <br>
+  <a href="examples/svg-open-sign.svg"><img src="examples/svg-open-sign-swatch.svg" alt="pink logo" width="64"></a>
+  <a href="examples/svg-open-sign-green.svg"><img src="examples/svg-open-sign-green-swatch.svg" alt="green logo" width="64"></a>
+  <a href="examples/svg-open-sign-blue.svg"><img src="examples/svg-open-sign-blue-swatch.svg" alt="blue logo" width="64"></a>
+  <a href="examples/svg-open-sign-red.svg"><img src="examples/svg-open-sign-red-swatch.svg" alt="red logo" width="64"></a>
 </p>
 
 # SVG for C++
@@ -21,8 +28,9 @@ int main() {
     SVG::SVG root;
 
     // Basic CSS support
-    root.style("circle").set_attr("fill", "#000000")
-        .set_attr("stroke", "#000000");
+    auto black = SVG::Color::hex("#000000");
+    root.style("circle").set_attr("fill", black)
+        .set_attr("stroke", black);
     root.style("rect#my_rectangle").set_attr("fill", "red");
 
     // Method 1 of adding elements - add_child<>()

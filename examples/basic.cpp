@@ -5,8 +5,9 @@ int main() {
     SVG::SVG root;
 
     // Basic CSS support
-    root.style("circle").set_attr("fill", "#000000")
-        .set_attr("stroke", "#000000");
+    auto black = SVG::Color::hex("#000000");
+    root.style("circle").set_attr("fill", black)
+        .set_attr("stroke", black);
     root.style("rect#my_rectangle").set_attr("fill", "red");
 
     // Method 1 of adding elements - add_child<>()

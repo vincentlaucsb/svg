@@ -38,6 +38,8 @@
 #include <iostream>
 #include <algorithm> // min, max
 #include <cctype>
+#include <cmath>
+#include <cstdint>
 #include <fstream>   // ofstream
 #include <functional>
 #include <math.h>    // NAN
@@ -121,6 +123,167 @@ namespace SVG {
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
 
+    /** CSS color value stored as concrete sRGB channels for palette math. */
+    class Color {
+    public:
+        /** Build an rgb() color from 8-bit channel values. */
+        static Color rgb(int red, int green, int blue) {
+            return Color(channel(red), channel(green), channel(blue));
+        }
+
+        /** Build a normalized hex color from 3 or 6 hexadecimal digits. */
+        static Color hex(std::string value) {
+            if (!value.empty() && value[0] == '#') {
+                value.erase(value.begin());
+            }
+            if (value.size() != 3 && value.size() != 6) {
+                throw std::invalid_argument("Hex colors must use 3 or 6 digits");
+            }
+
+            for (auto& ch : value) {
+                if (!std::isxdigit(static_cast<unsigned char>(ch))) {
+                    throw std::invalid_argument("Hex colors may only contain hexadecimal digits");
+                }
+                ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            }
+
+            if (value.size() == 3) {
+                value = std::string{ value[0], value[0],
+                                     value[1], value[1],
+                                     value[2], value[2] };
+            }
+
+            return Color(from_hex_pair(value, 0),
+                         from_hex_pair(value, 2),
+                         from_hex_pair(value, 4));
+        }
+
+        /** Build an sRGB color from hue degrees and saturation/lightness percentages. */
+        static Color hsl(double hue, double saturation, double lightness) {
+            validate_percentage(saturation, "Saturation");
+            validate_percentage(lightness, "Lightness");
+
+            hue = std::fmod(hue, 360.0);
+            if (hue < 0) {
+                hue += 360.0;
+            }
+
+            const auto s = saturation / 100.0;
+            const auto l = lightness / 100.0;
+            const auto c = (1.0 - std::fabs(2.0 * l - 1.0)) * s;
+            const auto x = c * (1.0 - std::fabs(std::fmod(hue / 60.0, 2.0) - 1.0));
+            const auto m = l - c / 2.0;
+            double red = 0;
+            double green = 0;
+            double blue = 0;
+
+            if (hue < 60) {
+                red = c;
+                green = x;
+            } else if (hue < 120) {
+                red = x;
+                green = c;
+            } else if (hue < 180) {
+                green = c;
+                blue = x;
+            } else if (hue < 240) {
+                green = x;
+                blue = c;
+            } else if (hue < 300) {
+                red = x;
+                blue = c;
+            } else {
+                red = c;
+                blue = x;
+            }
+
+            return Color(channel_from_unit(red + m),
+                         channel_from_unit(green + m),
+                         channel_from_unit(blue + m));
+        }
+
+        /** Mix this color toward another color by a 0.0-1.0 amount. */
+        Color mix(const Color& other, double amount) const {
+            validate_unit(amount, "Mix amount");
+            return Color(mix_channel(this->red_, other.red_, amount),
+                         mix_channel(this->green_, other.green_, amount),
+                         mix_channel(this->blue_, other.blue_, amount));
+        }
+
+        /** Mix this color toward white. */
+        Color tint(double amount) const {
+            return mix(white(), amount);
+        }
+
+        /** Mix this color toward black. */
+        Color shade(double amount) const {
+            return mix(black(), amount);
+        }
+
+        /** Return the serialized CSS color token. */
+        std::string str() const {
+            std::ostringstream ss;
+            ss << '#'
+               << std::hex << std::setfill('0') << std::nouppercase
+               << std::setw(2) << static_cast<int>(red_)
+               << std::setw(2) << static_cast<int>(green_)
+               << std::setw(2) << static_cast<int>(blue_);
+            return ss.str();
+        }
+
+        /** Allow Color to be used anywhere an attribute accepts std::string. */
+        operator std::string() const {
+            return str();
+        }
+
+    private:
+        Color(uint8_t red, uint8_t green, uint8_t blue) : red_(red), green_(green), blue_(blue) {}
+
+        static Color white() {
+            return rgb(255, 255, 255);
+        }
+
+        static Color black() {
+            return rgb(0, 0, 0);
+        }
+
+        static uint8_t channel(int value) {
+            if (value < 0 || value > 255) {
+                throw std::invalid_argument("RGB channels must be between 0 and 255");
+            }
+            return static_cast<uint8_t>(value);
+        }
+
+        static uint8_t channel_from_unit(double value) {
+            value = std::max(0.0, std::min(1.0, value));
+            return channel(static_cast<int>(std::round(value * 255.0)));
+        }
+
+        static uint8_t from_hex_pair(const std::string& value, size_t offset) {
+            return static_cast<uint8_t>(std::stoi(value.substr(offset, 2), nullptr, 16));
+        }
+
+        static uint8_t mix_channel(uint8_t from, uint8_t to, double amount) {
+            return channel(static_cast<int>(std::round(from + (to - from) * amount)));
+        }
+
+        static void validate_percentage(double value, const std::string& label) {
+            if (value < 0 || value > 100) {
+                throw std::invalid_argument(label + " must be between 0 and 100");
+            }
+        }
+
+        static void validate_unit(double value, const std::string& label) {
+            if (value < 0 || value > 1) {
+                throw std::invalid_argument(label + " must be between 0 and 1");
+            }
+        }
+
+        uint8_t red_;
+        uint8_t green_;
+        uint8_t blue_;
+    };
+
 #if __cplusplus < 201402L
     namespace detail {
         template<typename T, typename... Args>
@@ -191,6 +354,8 @@ namespace SVG {
 
     inline std::string to_string(const double& value);
     inline std::string to_string(const Point& point);
+    /** Return the serialized CSS color token. */
+    inline std::string to_string(const Color& color);
     inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level=0);
     /** Escape text for XML element content or attribute values. */
     inline std::string escape_xml(const std::string& text);
@@ -557,6 +722,11 @@ namespace SVG {
         return to_string(point.first) + "," + to_string(point.second);
     }
 
+    inline std::string to_string(const Color& color) {
+        /** Return the serialized CSS color token. */
+        return color.str();
+    }
+
     inline std::string escape_xml(const std::string& text) {
         std::string out;
         out.reserve(text.size());
@@ -595,6 +765,14 @@ namespace SVG {
                        bool _normalize_class = false,
                        std::function<void(const std::string&)> _on_update = {}) :
                     attr_(_attr), normalize_class_(_normalize_class), on_update_(_on_update) {};
+
+            /** Append a serialized color token to the attribute value. */
+            AttrSetter& operator<<(const Color& value) {
+                attr_ += value.str();
+                normalize();
+                notify();
+                return *this;
+            }
 
             template<typename T>
             AttrSetter& operator<<(T value) {
@@ -644,6 +822,9 @@ namespace SVG {
             this->set_attr_value(key, std::to_string(value));
             return *this;
         }
+
+        /** Set an attribute to a serialized color token. */
+        AttributeMap& set_attr(const std::string key, const Color& value);
 
         /** Set multiple attributes at once */
         AttributeMap& set_attrs(std::initializer_list<std::pair<std::string, std::string>> values) {
@@ -735,6 +916,11 @@ namespace SVG {
     inline AttributeMap& AttributeMap::set_attr(const std::string key, const double value) {
         /** Modify the attribute specified by key */
         this->set_attr_value(key, to_string(value));
+        return *this;
+    }
+
+    inline AttributeMap& AttributeMap::set_attr(const std::string key, const Color& value) {
+        this->set_attr_value(key, value.str());
         return *this;
     }
 

@@ -65,6 +65,68 @@ TEST_CASE("Style Attrs overloads chain on the SVG root", "[style]") {
     REQUIRE(output.find(".label {\n\t\t\t\t\tfill: #f9fafb;\n\t\t\t\t}") != std::string::npos);
 }
 
+TEST_CASE("Color helpers serialize concrete color values", "[style]") {
+    SVG::SVG root;
+    const auto axis = SVG::Color::rgb(55, 65, 81);
+    const auto background = SVG::Color::hex("FFFFFF");
+    const auto accent = SVG::Color::hsl(325, 89.5, 62);
+
+    root.style(".axis").set_attr("stroke", axis);
+    root.style(".plot").set_attr("fill", background);
+    root.add_child<SVG::Circle>(0, 0, 4, SVG::Attrs{{ "fill", accent }});
+
+    const auto output = std::string(root);
+
+    REQUIRE(axis.str() == "#374151");
+    REQUIRE(background.str() == "#ffffff");
+    REQUIRE(SVG::Color::hex("#f0a").str() == "#ff00aa");
+    REQUIRE(accent.str() == "#f547ad");
+    REQUIRE(output.find(".axis {\n\t\t\t\tstroke: #374151;\n\t\t\t}") != std::string::npos);
+    REQUIRE(output.find(".plot {\n\t\t\t\tfill: #ffffff;\n\t\t\t}") != std::string::npos);
+    REQUIRE(output.find("<circle cx=\"0.0\" cy=\"0.0\" fill=\"#f547ad\" r=\"4.0\" />") != std::string::npos);
+}
+
+TEST_CASE("Color helpers preserve palette relationships", "[style]") {
+    const auto text = SVG::Color::hex("#111827");
+    const auto background = SVG::Color::hex("#ffffff");
+
+    REQUIRE(text.mix(background, 0.25).str() == "#4d525d");
+    REQUIRE(text.tint(0.5).str() == "#888c93");
+    REQUIRE(text.shade(0.5).str() == "#090c14");
+}
+
+TEST_CASE("Color helpers reject invalid values", "[style]") {
+    REQUIRE_THROWS_AS(SVG::Color::rgb(-1, 0, 0), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::rgb(0, 256, 0), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::hex("#12"), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::hex("#xxxyyy"), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::hsl(120, -0.1, 50), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::hsl(120, 50, 100.1), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::hex("#111827").tint(-0.1), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Color::hex("#111827").shade(1.1), std::invalid_argument);
+}
+
+TEST_CASE("Modern CSS color strings are preserved exactly", "[style]") {
+    SVG::SVG root;
+    root.style(".modern").set_attrs({
+        { "color", "currentColor" },
+        { "fill", "oklch(70% 0.14 145)" },
+        { "stroke", "color-mix(in oklch, var(--success), transparent 70%)" }
+    });
+    auto* rect = root.add_child<SVG::Rect>(
+        0, 0, 10, 10,
+        SVG::Attrs{{ "fill", "color-mix(in oklch, var(--heat-3), white 20%)" }});
+
+    const auto output = std::string(root);
+
+    REQUIRE(rect->get_attr("fill") == "color-mix(in oklch, var(--heat-3), white 20%)");
+    REQUIRE(output.find("color: currentColor;") != std::string::npos);
+    REQUIRE(output.find("fill: oklch(70% 0.14 145);") != std::string::npos);
+    REQUIRE(output.find("stroke: color-mix(in oklch, var(--success), transparent 70%);") !=
+            std::string::npos);
+    REQUIRE(output.find("fill=\"color-mix(in oklch, var(--heat-3), white 20%)\"") != std::string::npos);
+}
+
 TEST_CASE("Keyframes serialize alongside regular styles", "[style]") {
     SVG::SVG root;
     root.style(".bar").set_attr("fill", "var(--bar-fill)");
