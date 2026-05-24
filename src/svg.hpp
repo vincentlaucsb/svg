@@ -1320,7 +1320,10 @@ namespace SVG {
                 children(std::move(other.children)),
                 parent_(nullptr),
                 owner_(nullptr),
-                indexed_id_() {
+                indexed_id_(),
+                has_layout_bbox_(other.has_layout_bbox_),
+                layout_bbox_(other.layout_bbox_) {
+            other.has_layout_bbox_ = false;
             reparent_children();
         }
         Element& operator=(const Element&) = delete; // No copy assignment
@@ -1331,6 +1334,9 @@ namespace SVG {
                 parent_ = nullptr;
                 owner_ = nullptr;
                 indexed_id_.clear();
+                has_layout_bbox_ = other.has_layout_bbox_;
+                layout_bbox_ = other.layout_bbox_;
+                other.has_layout_bbox_ = false;
                 reparent_children();
             }
             return *this;
@@ -1430,9 +1436,23 @@ namespace SVG {
         void responsive_autoscale(const Margins& margins=DEFAULT_MARGINS);
         /** Set only the viewBox from content bounds and percentage margins. */
         void responsive_autoscale(const double margin);
+        /** Provide explicit bounds for autoscale/layout when built-in measurement is insufficient. */
+        Element& layout_bbox(const BoundingBox& bbox);
+        /** Remove an explicit autoscale/layout bound override. */
+        Element& clear_layout_bbox();
+        /** Return true when autoscale/layout uses caller-provided bounds for this element. */
+        bool has_layout_bbox() const { return has_layout_bbox_; }
+        /** Return explicit autoscale/layout bounds, or this element's measured bounds when unset. */
+        BoundingBox layout_bbox() const;
         virtual BoundingBox get_bbox() const;
         ChildMap get_children();
         ConstChildMap get_children() const;
+        /** Range-for iteration visits this element and descendants in depth-first document order. */
+        DepthFirstIterator begin();
+        /** Range-for iteration visits this element and descendants in depth-first document order. */
+        ConstDepthFirstIterator begin() const;
+        DepthFirstIterator end();
+        ConstDepthFirstIterator end() const;
         /** Iterate through this element and its descendants in depth-first order. */
         DepthFirstRange depth_first();
         /** Iterate through this element and its descendants in depth-first order. */
@@ -1448,6 +1468,7 @@ namespace SVG {
         std::vector<Element*> get_children_helper();
         std::vector<const Element*> get_children_helper() const;
         BoundingBox get_autoscale_bbox() const;
+        BoundingBox measured_layout_bbox() const;
         void get_bbox(Element::BoundingBox&) const;
         void set_viewbox_from_bbox(const BoundingBox& bbox, const Margins& margins);
         virtual std::string svg_to_string(const size_t indent_level) const; /** SVG string corresponding to this element */
@@ -1509,6 +1530,8 @@ namespace SVG {
         Element* parent_ = nullptr;
         SVG* owner_ = nullptr;
         std::string indexed_id_;
+        bool has_layout_bbox_ = false;
+        BoundingBox layout_bbox_ = BoundingBox(NAN, NAN, NAN, NAN);
     };
 
     template<>
@@ -1581,7 +1604,9 @@ namespace SVG {
             AttributeMap(other.attrs()),
             parent_(nullptr),
             owner_(nullptr),
-            indexed_id_() {
+            indexed_id_(),
+            has_layout_bbox_(other.has_layout_bbox_),
+            layout_bbox_(other.layout_bbox_) {
         for (const auto& child : other.children) {
             this->insert_child(child->clone_element(), this->children.end());
         }
@@ -1801,6 +1826,22 @@ namespace SVG {
 
     inline Element::ConstDepthFirstRange Element::depth_first() const {
         return { this, true };
+    }
+
+    inline Element::DepthFirstIterator Element::begin() {
+        return DepthFirstIterator(this, true);
+    }
+
+    inline Element::ConstDepthFirstIterator Element::begin() const {
+        return ConstDepthFirstIterator(this, true);
+    }
+
+    inline Element::DepthFirstIterator Element::end() {
+        return DepthFirstIterator();
+    }
+
+    inline Element::ConstDepthFirstIterator Element::end() const {
+        return ConstDepthFirstIterator();
     }
 
     inline Element::DepthFirstRange Element::descendants() {
@@ -2348,11 +2389,54 @@ namespace SVG {
         Text(std::pair<double, double> xy, std::string _content) :
                 Text(xy.first, xy.second, _content) {};
 
+        /** Return approximate text bounds from coordinates, font size, anchor, and baseline attributes. */
+        BoundingBox get_bbox() const override;
+
     protected:
         std::string content;
         std::string svg_to_string(const size_t) const override;
         std::unique_ptr<Element> clone_element_impl() const override {
             return clone_as<Text>();
+        }
+
+    private:
+        static double parse_numeric_or(const std::string& value, double fallback) {
+            if (value.empty()) return fallback;
+            try {
+                return std::stof(value);
+            } catch (const std::invalid_argument&) {
+                return fallback;
+            } catch (const std::out_of_range&) {
+                return fallback;
+            }
+        }
+
+        double numeric_attr_or(const std::string& key, double fallback) const {
+            return parse_numeric_or(this->get_attr(key), fallback);
+        }
+
+        static std::size_t line_count(const std::string& text) {
+            if (text.empty()) return 0;
+            std::size_t count = 1;
+            for (const auto ch : text) {
+                if (ch == '\n') ++count;
+            }
+            return count;
+        }
+
+        static std::size_t max_line_codepoints(const std::string& text) {
+            std::size_t current = 0;
+            std::size_t longest = 0;
+            for (const auto ch : text) {
+                if (ch == '\n') {
+                    if (current > longest) longest = current;
+                    current = 0;
+                    continue;
+                }
+                const auto byte = static_cast<unsigned char>(ch);
+                if ((byte & 0xc0) != 0x80) ++current;
+            }
+            return current > longest ? current : longest;
         }
     };
 
@@ -2494,6 +2578,44 @@ namespace SVG {
     protected:
         std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Polygon>(); }
     };
+
+    inline Element::BoundingBox Text::get_bbox() const {
+        if (content.empty()) {
+            const auto x = numeric_attr_or("x", 0) + numeric_attr_or("dx", 0);
+            const auto y = numeric_attr_or("y", 0) + numeric_attr_or("dy", 0);
+            return { x, x, y, y };
+        }
+
+        double font_size = numeric_attr_or("font-size", 16);
+        if (!(font_size > 0)) font_size = 16;
+
+        const double x = numeric_attr_or("x", 0) + numeric_attr_or("dx", 0);
+        const double y = numeric_attr_or("y", 0) + numeric_attr_or("dy", 0);
+        const double width = static_cast<double>(max_line_codepoints(content)) * font_size * 0.6;
+        const double height = static_cast<double>(line_count(content)) * font_size * 1.2;
+
+        double x1 = x;
+        const auto anchor = this->get_attr("text-anchor", "start");
+        if (anchor == "middle") {
+            x1 = x - width / 2;
+        } else if (anchor == "end") {
+            x1 = x - width;
+        }
+
+        const auto baseline = this->get_attr(
+            "dominant-baseline",
+            this->get_attr("alignment-baseline", "alphabetic"));
+        double y1 = y - font_size * 0.8;
+        if (baseline == "middle" || baseline == "central" || baseline == "mathematical") {
+            y1 = y - height / 2;
+        } else if (baseline == "hanging" || baseline == "text-before-edge" || baseline == "text-top") {
+            y1 = y;
+        } else if (baseline == "text-after-edge" || baseline == "text-bottom") {
+            y1 = y - height;
+        }
+
+        return { x1, x1 + width, y1, y1 + height };
+    }
 
     inline Element::BoundingBox Line::get_bbox() const {
         return { x1(), x2(), y1(), y2() };
@@ -2648,8 +2770,28 @@ namespace SVG {
         return detail::text_content_element_to_string(*this, tag_name(this->kind()), this->content, indent_level);
     }
 
+    inline Element& Element::layout_bbox(const BoundingBox& bbox) {
+        layout_bbox_ = bbox;
+        has_layout_bbox_ = true;
+        return *this;
+    }
+
+    inline Element& Element::clear_layout_bbox() {
+        has_layout_bbox_ = false;
+        layout_bbox_ = BoundingBox(NAN, NAN, NAN, NAN);
+        return *this;
+    }
+
+    inline Element::BoundingBox Element::layout_bbox() const {
+        return measured_layout_bbox();
+    }
+
+    inline Element::BoundingBox Element::measured_layout_bbox() const {
+        return has_layout_bbox_ ? layout_bbox_ : this->get_bbox();
+    }
+
     inline Element::BoundingBox Element::get_autoscale_bbox() const {
-        Element::BoundingBox bbox = this->get_bbox();
+        Element::BoundingBox bbox = this->measured_layout_bbox();
         this->get_bbox(bbox); // Compute the transform-aware descendant bounds
         return bbox;
     }
@@ -2720,7 +2862,7 @@ namespace SVG {
         auto elements = this->depth_first();
         for (auto element = elements.begin(); element != elements.end(); ++element) {
             const auto* current = *element;
-            auto current_box = current->get_bbox();
+            auto current_box = current->measured_layout_bbox();
             if (std::isnan(current_box.x1) || std::isnan(current_box.x2) ||
                     std::isnan(current_box.y1) || std::isnan(current_box.y2)) {
                 continue;

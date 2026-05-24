@@ -21,16 +21,28 @@ TEST_CASE("get_children includes nested descendants", "[traversal]") {
     REQUIRE(child_map["circle"].size() == 2);
 }
 
-TEST_CASE("depth_first iterates elements in document order", "[traversal]") {
+TEST_CASE("range-for iterates elements in depth-first document order", "[traversal]") {
     SVG::SVG root;
     auto* group = root.add_child<SVG::Group>();
     auto* rect = group->add_child<SVG::Rect>();
     auto* circle = group->add_child<SVG::Circle>();
 
     std::vector<SVG::Element*> elements;
-    for (auto* element : root.depth_first()) elements.push_back(element);
+    for (auto* element : root) elements.push_back(element);
 
     REQUIRE(elements == std::vector<SVG::Element*>({ &root, root.css, group, rect, circle }));
+}
+
+TEST_CASE("const range-for iterates elements in depth-first document order", "[traversal]") {
+    SVG::SVG root;
+    auto* group = root.add_child<SVG::Group>();
+    auto* rect = group->add_child<SVG::Rect>();
+    const SVG::SVG& const_root = root;
+
+    std::vector<const SVG::Element*> elements;
+    for (const auto* element : const_root) elements.push_back(element);
+
+    REQUIRE(elements == std::vector<const SVG::Element*>({ &root, root.css, group, rect }));
 }
 
 TEST_CASE("const descendants iterates without including the root", "[traversal]") {
