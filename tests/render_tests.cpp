@@ -122,6 +122,48 @@ TEST_CASE("Symbols and uses serialize reusable marks", "[render]") {
             std::string::npos);
 }
 
+TEST_CASE("Defs helpers create and reuse linear gradients", "[render]") {
+    SVG::SVG root;
+    auto& gradient = root.defs()->linear_gradient("gym-mtb")
+        .horizontal()
+        .solid_segments({ "#2563eb", "#f97316" });
+    auto* rect = root.add_child<SVG::Rect>(0, 0, 10, 10);
+    rect->set_attr("fill", gradient.url());
+
+    const std::string svg = root;
+
+    REQUIRE(&root.defs()->linear_gradient("gym-mtb") == &gradient);
+    REQUIRE(svg.find("<linearGradient id=\"gym-mtb\" x1=\"0%\" x2=\"100%\" y1=\"0%\" y2=\"0%\">") !=
+            std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"0.0%\" stop-color=\"#2563eb\" />") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"50.0%\" stop-color=\"#2563eb\" />") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"50.0%\" stop-color=\"#f97316\" />") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"100.0%\" stop-color=\"#f97316\" />") != std::string::npos);
+    REQUIRE(svg.find("<rect fill=\"url(#gym-mtb)\" height=\"10.0\" width=\"10.0\" x=\"0.0\" y=\"0.0\" />") !=
+            std::string::npos);
+}
+
+TEST_CASE("Defs helpers create radial gradients with stops", "[render]") {
+    SVG::SVG root;
+    auto& radial = root.defs()->radial_gradient("spot")
+        .center("50%", "50%")
+        .radius("50%")
+        .stop("0%", SVG::Color::hex("#ffffff"), 0.5)
+        .stop("100%", "#000000");
+    auto* circle = root.add_child<SVG::Circle>(0, 0, 10);
+    circle->set_attr("fill", radial.url());
+
+    const std::string svg = root;
+
+    REQUIRE(&root.defs()->radial_gradient("spot") == &radial);
+    REQUIRE(svg.find("<radialGradient cx=\"50%\" cy=\"50%\" id=\"spot\" r=\"50%\">") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"0%\" stop-color=\"#ffffff\" stop-opacity=\"0.5\" />") !=
+            std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"100%\" stop-color=\"#000000\" />") != std::string::npos);
+    REQUIRE(svg.find("<circle cx=\"0.0\" cy=\"0.0\" fill=\"url(#spot)\" r=\"10.0\" />") !=
+            std::string::npos);
+}
+
 TEST_CASE("Defs serialize after root styles", "[render]") {
     SVG::SVG root;
     auto* line = root.add_child<SVG::Line>(0, 0, 10, 10);

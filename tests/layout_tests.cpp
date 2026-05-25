@@ -65,6 +65,60 @@ TEST_CASE("autoscale includes simple rotate transforms", "[layout]") {
     REQUIRE(root.get_attr("viewBox") == "-20.0 0.0 20.0 10.0");
 }
 
+TEST_CASE("shape bbox includes visible stroke width", "[layout]") {
+    SVG::Rect rect(0, 0, 10, 20);
+    rect.set_attr("stroke", "#111")
+        .set_attr("stroke-width", 4);
+
+    const auto bbox = rect.get_bbox();
+
+    REQUIRE(bbox.x1 == Approx(-2));
+    REQUIRE(bbox.x2 == Approx(12));
+    REQUIRE(bbox.y1 == Approx(-2));
+    REQUIRE(bbox.y2 == Approx(22));
+}
+
+TEST_CASE("stroke width without a visible stroke does not affect bbox", "[layout]") {
+    SVG::Circle circle(10, 20, 5);
+    circle.set_attr("stroke-width", 8);
+
+    const auto bbox = circle.get_bbox();
+
+    REQUIRE(bbox.x1 == Approx(5));
+    REQUIRE(bbox.x2 == Approx(15));
+    REQUIRE(bbox.y1 == Approx(15));
+    REQUIRE(bbox.y2 == Approx(25));
+}
+
+TEST_CASE("autoscale includes visible stroke width", "[layout]") {
+    SVG::SVG root;
+    auto* rect = root.add_child<SVG::Rect>(0, 0, 10, 10);
+    rect->set_attr("stroke", "#111")
+        .set_attr("stroke-width", 4);
+
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(root.get_attr("viewBox") == "-2.0 -2.0 14.0 14.0");
+}
+
+TEST_CASE("use bbox includes referenced stroked symbol bounds", "[layout]") {
+    SVG::SVG root;
+    auto* symbol = root.defs()->symbol("marker");
+    auto* rect = symbol->add_child<SVG::Rect>(0, 0, 10, 10);
+    rect->set_attr("stroke", "#111")
+        .set_attr("stroke-width", 4);
+    auto* use = root.add_child<SVG::Use>(symbol->href(), 20, 30);
+
+    const auto bbox = use->get_bbox();
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(bbox.x1 == Approx(18));
+    REQUIRE(bbox.x2 == Approx(32));
+    REQUIRE(bbox.y1 == Approx(28));
+    REQUIRE(bbox.y2 == Approx(42));
+    REQUIRE(root.get_attr("viewBox") == "18.0 28.0 14.0 14.0");
+}
+
 TEST_CASE("rotate_about_bbox rotates text around bottom-right bounds", "[layout]") {
     SVG::Text label(10, 20, "May");
     label.set_attr("font-size", 10);

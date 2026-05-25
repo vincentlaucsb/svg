@@ -57,7 +57,7 @@ int main() {
 }
 ```
 
-`autoscale()` measures element geometry, including simple SVG `rotate(...)` transforms and approximate `Text` bounds from `x`, `y`, `dx`, `dy`, `font-size`, `text-anchor`, and baseline attributes. It sets `width`, `height`, and `viewBox`; use `responsive_autoscale()` when the SVG should calculate only `viewBox` and let its container control display size. It does not inspect CSS transforms, rendered effects such as filters or shadows, stroke joins, font metrics, or external stylesheets; pass `SVG::Margins` when the drawing needs extra page space for those effects.
+`autoscale()` measures element geometry, including simple SVG `rotate(...)` transforms, visible element `stroke-width` attributes, local `<use>` references, and approximate `Text` bounds from `x`, `y`, `dx`, `dy`, `font-size`, `text-anchor`, and baseline attributes. It sets `width`, `height`, and `viewBox`; use `responsive_autoscale()` when the SVG should calculate only `viewBox` and let its container control display size. It does not inspect CSS transforms, rendered effects such as filters or shadows, stroke joins, font metrics, CSS class rules, media queries, or external stylesheets; put autoscale-critical stroke widths on elements or pass `SVG::Margins` when the drawing needs extra page space for those effects.
 
 Nested `SVG::SVG` elements are supported as normal SVG viewports. By default, `autoscale()` first autoscales nested SVG children, then measures their viewport boxes in the parent coordinate system. Use `AutoscaleOptions` to preserve existing nested viewport sizes.
 
@@ -169,6 +169,26 @@ For type-specific searches, `get_children<T>()` returns matching descendants and
 for (auto* circle : root.get_children<SVG::Circle>()) {
     circle->set_attr("r", 8);
 }
+```
+
+### Gradients
+
+Use `defs()` helpers to define paint servers without manually constructing XML-style gradient elements. The helpers reuse an existing definition when the id is already present.
+
+```cpp
+auto& gradient = root.defs()->linear_gradient("gym-mtb")
+    .horizontal()
+    .solid_segments({ "#2563eb", "#f97316" });
+
+rect->set_attr("fill", gradient.url());
+
+auto& radial = root.defs()->radial_gradient("spot")
+    .center("50%", "50%")
+    .radius("50%")
+    .stop("0%", "#ffffff")
+    .stop("100%", "#000000");
+
+circle->set_attr("fill", radial.url());
 ```
 
 ### Responsive ViewBoxes

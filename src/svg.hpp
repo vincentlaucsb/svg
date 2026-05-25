@@ -62,8 +62,11 @@ namespace SVG {
      */
     class AttributeMap;
     class Element;
+    class LinearGradient;
+    class RadialGradient;
     class SVG;
     class Shape;
+    class Stop;
     class Symbol;
     class Use;
 
@@ -71,6 +74,9 @@ namespace SVG {
     enum class ElementKind {
         Custom,
         Defs,
+        LinearGradient,
+        RadialGradient,
+        Stop,
         Symbol,
         Use,
         SVG,
@@ -89,6 +95,9 @@ namespace SVG {
     inline std::string tag_name(ElementKind kind) {
         switch (kind) {
             case ElementKind::Defs: return "defs";
+            case ElementKind::LinearGradient: return "linearGradient";
+            case ElementKind::RadialGradient: return "radialGradient";
+            case ElementKind::Stop: return "stop";
             case ElementKind::Symbol: return "symbol";
             case ElementKind::Use: return "use";
             case ElementKind::SVG: return "svg";
@@ -1589,6 +1598,7 @@ namespace SVG {
         std::vector<const Element*> get_children_helper() const;
         BoundingBox get_autoscale_bbox() const;
         BoundingBox measured_layout_bbox() const;
+        BoundingBox include_stroke_width(const BoundingBox& bbox) const;
         void autoscale_nested_svgs(const AutoscaleOptions& options, bool responsive);
         static detail::AffineTransform transform_for(const Element* element,
                                                      const detail::AffineTransform& parent_transform);
@@ -1616,6 +1626,7 @@ namespace SVG {
         void unregister_subtree_ids();
         void register_own_id();
         void unregister_own_id();
+        void clear_children();
 
         Element* insert_child(std::unique_ptr<Element> child, ChildIterator position) {
             child->parent_ = this;
@@ -2061,11 +2072,203 @@ namespace SVG {
         static constexpr ElementKind static_kind = ElementKind::Defs;
         using Element::Element;
         ElementKind kind() const override { return static_kind; }
+        /** Return an existing linear gradient with this id, or create one when absent. */
+        LinearGradient& linear_gradient(std::string id);
+        /** Return an existing radial gradient with this id, or create one when absent. */
+        RadialGradient& radial_gradient(std::string id);
         /** Return an existing symbol with this id, or create one when absent. */
         Symbol* symbol(std::string id);
 
     protected:
         std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Defs>(); }
+    };
+
+    /** Gradient color stop managed by LinearGradient and RadialGradient builders. */
+    class Stop : public Element {
+    public:
+        static constexpr ElementKind static_kind = ElementKind::Stop;
+        Stop() = default;
+        using Element::Element;
+        ElementKind kind() const override { return static_kind; }
+
+        Stop(std::string offset, std::string color) {
+            this->set_attr("offset", std::move(offset));
+            this->set_attr("stop-color", std::move(color));
+        }
+
+        Stop(std::string offset, std::string color, double opacity) :
+                Stop(std::move(offset), std::move(color)) {
+            this->set_attr("stop-opacity", opacity);
+        }
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Stop>(); }
+    };
+
+    /** Shared builder implementation for SVG gradient definitions. */
+    class GradientElement : public Element {
+    public:
+        using Element::Element;
+
+        /** Return the paint server URL for fill or stroke attributes. */
+        std::string url() const {
+            const auto gradient_id = this->id();
+            if (gradient_id.empty()) {
+                throw std::logic_error("SVG gradient must have an id before it can be referenced");
+            }
+            return "url(#" + gradient_id + ")";
+        }
+
+    protected:
+        void add_stop(std::string offset, std::string color) {
+            this->add_child<Stop>(std::move(offset), std::move(color));
+        }
+
+        void add_stop(std::string offset, std::string color, double opacity) {
+            this->add_child<Stop>(std::move(offset), std::move(color), opacity);
+        }
+
+        void set_solid_segments(std::initializer_list<std::string> colors) {
+            if (colors.size() == 0) {
+                throw std::invalid_argument("solid_segments requires at least one color");
+            }
+
+            this->clear_children();
+            if (colors.size() == 1) {
+                const auto color = *colors.begin();
+                add_stop("0%", color);
+                add_stop("100%", color);
+                return;
+            }
+
+            const auto segment_width = 100.0 / static_cast<double>(colors.size());
+            std::size_t index = 0;
+            for (const auto& color : colors) {
+                const auto start = percent(index * segment_width);
+                const auto end = percent((index + 1) * segment_width);
+                add_stop(start, color);
+                add_stop(end, color);
+                ++index;
+            }
+        }
+
+    private:
+        static std::string percent(double value) {
+            std::stringstream ss;
+            ss << std::fixed << std::setprecision(1) << value << "%";
+            return ss.str();
+        }
+    };
+
+    /** Linear gradient definition created through Defs::linear_gradient(). */
+    class LinearGradient : public GradientElement {
+    public:
+        static constexpr ElementKind static_kind = ElementKind::LinearGradient;
+        LinearGradient() = default;
+        using GradientElement::GradientElement;
+        ElementKind kind() const override { return static_kind; }
+
+        explicit LinearGradient(std::string id) {
+            this->id(id);
+        }
+
+        LinearGradient& horizontal() {
+            return endpoints("0%", "0%", "100%", "0%");
+        }
+
+        LinearGradient& vertical() {
+            return endpoints("0%", "0%", "0%", "100%");
+        }
+
+        LinearGradient& endpoints(std::string x1, std::string y1, std::string x2, std::string y2) {
+            this->set_attr("x1", std::move(x1));
+            this->set_attr("y1", std::move(y1));
+            this->set_attr("x2", std::move(x2));
+            this->set_attr("y2", std::move(y2));
+            return *this;
+        }
+
+        LinearGradient& stop(std::string offset, std::string color) {
+            add_stop(std::move(offset), std::move(color));
+            return *this;
+        }
+
+        LinearGradient& stop(std::string offset, const Color& color) {
+            return stop(std::move(offset), static_cast<std::string>(color));
+        }
+
+        LinearGradient& stop(std::string offset, std::string color, double opacity) {
+            add_stop(std::move(offset), std::move(color), opacity);
+            return *this;
+        }
+
+        LinearGradient& stop(std::string offset, const Color& color, double opacity) {
+            return stop(std::move(offset), static_cast<std::string>(color), opacity);
+        }
+
+        LinearGradient& solid_segments(std::initializer_list<std::string> colors) {
+            set_solid_segments(colors);
+            return *this;
+        }
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<LinearGradient>(); }
+    };
+
+    /** Radial gradient definition created through Defs::radial_gradient(). */
+    class RadialGradient : public GradientElement {
+    public:
+        static constexpr ElementKind static_kind = ElementKind::RadialGradient;
+        RadialGradient() = default;
+        using GradientElement::GradientElement;
+        ElementKind kind() const override { return static_kind; }
+
+        explicit RadialGradient(std::string id) {
+            this->id(id);
+        }
+
+        RadialGradient& center(std::string cx, std::string cy) {
+            this->set_attr("cx", std::move(cx));
+            this->set_attr("cy", std::move(cy));
+            return *this;
+        }
+
+        RadialGradient& radius(std::string r) {
+            this->set_attr("r", std::move(r));
+            return *this;
+        }
+
+        RadialGradient& focal(std::string fx, std::string fy) {
+            this->set_attr("fx", std::move(fx));
+            this->set_attr("fy", std::move(fy));
+            return *this;
+        }
+
+        RadialGradient& stop(std::string offset, std::string color) {
+            add_stop(std::move(offset), std::move(color));
+            return *this;
+        }
+
+        RadialGradient& stop(std::string offset, const Color& color) {
+            return stop(std::move(offset), static_cast<std::string>(color));
+        }
+
+        RadialGradient& stop(std::string offset, std::string color, double opacity) {
+            add_stop(std::move(offset), std::move(color), opacity);
+            return *this;
+        }
+
+        RadialGradient& stop(std::string offset, const Color& color, double opacity) {
+            return stop(std::move(offset), static_cast<std::string>(color), opacity);
+        }
+
+        RadialGradient& solid_segments(std::initializer_list<std::string> colors) {
+            set_solid_segments(colors);
+            return *this;
+        }
+
+    protected:
+        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<RadialGradient>(); }
     };
 
     /** Reusable element definition that can be instantiated with Use. */
@@ -2119,6 +2322,8 @@ namespace SVG {
             return *this;
         }
         ElementKind kind() const override { return static_kind; }
+        /** Return referenced local element bounds shifted by this use element's x/y attributes. */
+        Element::BoundingBox get_bbox() const override;
 
     protected:
         std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Use>(); }
@@ -2461,6 +2666,29 @@ namespace SVG {
         this->indexed_id_.clear();
     }
 
+    inline void Element::clear_children() {
+        for (auto& child : this->children) {
+            child->unregister_subtree_ids();
+            child->set_owner_svg(nullptr);
+            child->parent_ = nullptr;
+        }
+        this->children.clear();
+    }
+
+    inline LinearGradient& Defs::linear_gradient(std::string id) {
+        for (auto* child : this->get_immediate_children<LinearGradient>()) {
+            if (child->id() == id) return *child;
+        }
+        return *this->add_child<LinearGradient>(std::move(id));
+    }
+
+    inline RadialGradient& Defs::radial_gradient(std::string id) {
+        for (auto* child : this->get_immediate_children<RadialGradient>()) {
+            if (child->id() == id) return *child;
+        }
+        return *this->add_child<RadialGradient>(std::move(id));
+    }
+
     inline Symbol* Defs::symbol(std::string id) {
         for (auto* child : this->get_immediate_children<Symbol>()) {
             if (child->id() == id) return child;
@@ -2744,7 +2972,7 @@ namespace SVG {
         if (content.empty()) {
             const auto x = numeric_attr_or("x", 0) + numeric_attr_or("dx", 0);
             const auto y = numeric_attr_or("y", 0) + numeric_attr_or("dy", 0);
-            return { x, x, y, y };
+            return include_stroke_width({ x, x, y, y });
         }
 
         double font_size = numeric_attr_or("font-size", 16);
@@ -2775,28 +3003,29 @@ namespace SVG {
             y1 = y - height;
         }
 
-        return { x1, x1 + width, y1, y1 + height };
+        return include_stroke_width({ x1, x1 + width, y1, y1 + height });
     }
 
     inline Element::BoundingBox Line::get_bbox() const {
-        return { x1(), x2(), y1(), y2() };
+        return include_stroke_width({ std::min(x1(), x2()), std::max(x1(), x2()),
+                                      std::min(y1(), y2()), std::max(y1(), y2()) });
     }
 
     inline Element::BoundingBox Rect::get_bbox() const {
         double x = this->x(), y = this->y(),
             width = this->width(), height = this->height();
-        return { x, x + width, y, y + height };
+        return include_stroke_width({ x, x + width, y, y + height });
     }
 
     inline Element::BoundingBox Circle::get_bbox() const {
         double x = this->x(), y = this->y(), radius = this->radius();
 
-        return {
+        return include_stroke_width({
             x - radius,
             x + radius,
             y - radius,
             y + radius
-        };
+        });
     }
 
     inline std::pair<double, double> Line::along(double percent) const {
@@ -2976,6 +3205,28 @@ namespace SVG {
                      std::isnan(bbox.y1) || std::isnan(bbox.y2));
         }
 
+        inline double visible_stroke_width(const Element& element) {
+            const auto stroke = element.get_attr("stroke");
+            if (stroke.empty() || stroke == "none") return 0;
+
+            const auto width = parse_number_or(element.get_attr("stroke-width"), 1);
+            return width > 0 ? width : 0;
+        }
+
+        inline bool renders_in_place(const Element* element) {
+            for (auto* current = element; current; current = current->parent()) {
+                const auto kind = current->kind();
+                if (kind == ElementKind::Defs || kind == ElementKind::Style ||
+                        kind == ElementKind::Symbol ||
+                        kind == ElementKind::LinearGradient ||
+                        kind == ElementKind::RadialGradient ||
+                        kind == ElementKind::Stop) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         inline double bbox_center_x(const Element::BoundingBox& bbox) {
             return bbox.x1 + (bbox.x2 - bbox.x1) / 2;
         }
@@ -2999,6 +3250,12 @@ namespace SVG {
         }
     }
 
+    inline Element::BoundingBox Element::include_stroke_width(const BoundingBox& bbox) const {
+        if (!detail::bbox_is_measured(bbox)) return bbox;
+        const auto outset = detail::visible_stroke_width(*this) / 2;
+        return { bbox.x1 - outset, bbox.x2 + outset, bbox.y1 - outset, bbox.y2 + outset };
+    }
+
     inline TransformList& TransformList::rotate_about_bbox(double degrees,
                                                            Anchor x_anchor,
                                                            Anchor y_anchor) {
@@ -3013,6 +3270,45 @@ namespace SVG {
         return rotate(degrees,
                       detail::bbox_anchor_x(bbox, x_anchor),
                       detail::bbox_anchor_y(bbox, y_anchor));
+    }
+
+    inline Element::BoundingBox Use::get_bbox() const {
+        const auto href = this->get_attr("href", this->get_attr("xlink:href"));
+        if (href.empty() || href[0] != '#') return { NAN, NAN, NAN, NAN };
+
+        const auto* root = this->owner_svg();
+        if (!root) return { NAN, NAN, NAN, NAN };
+
+        const auto* referenced = root->get_element_by_id(href.substr(1));
+        if (!referenced || referenced == this) return { NAN, NAN, NAN, NAN };
+
+        Element::BoundingBox bbox = referenced->layout_bbox();
+        auto elements = referenced->descendants(Element::TraversalOptions(false));
+        for (auto element = elements.begin(); element != elements.end(); ++element) {
+            const auto* current = *element;
+            auto current_box = current->layout_bbox();
+            if (!detail::bbox_is_measured(current_box)) {
+                continue;
+            }
+
+            const auto& transform = element.transform();
+            const auto p1 = transform.apply({ current_box.x1, current_box.y1 });
+            const auto p2 = transform.apply({ current_box.x2, current_box.y1 });
+            const auto p3 = transform.apply({ current_box.x2, current_box.y2 });
+            const auto p4 = transform.apply({ current_box.x1, current_box.y2 });
+            Element::BoundingBox transformed_box(
+                std::min(std::min(p1.first, p2.first), std::min(p3.first, p4.first)),
+                std::max(std::max(p1.first, p2.first), std::max(p3.first, p4.first)),
+                std::min(std::min(p1.second, p2.second), std::min(p3.second, p4.second)),
+                std::max(std::max(p1.second, p2.second), std::max(p3.second, p4.second)));
+            bbox = transformed_box + bbox;
+        }
+        if (!detail::bbox_is_measured(bbox)) return bbox;
+
+        const auto x = detail::parse_number_or(this->get_attr("x"), 0);
+        const auto y = detail::parse_number_or(this->get_attr("y"), 0);
+        bbox = { bbox.x1 + x, bbox.x2 + x, bbox.y1 + y, bbox.y2 + y };
+        return include_stroke_width(bbox);
     }
 
     inline Element::BoundingBox SVG::get_bbox() const {
@@ -3257,6 +3553,9 @@ namespace SVG {
         auto elements = this->descendants(TraversalOptions(false));
         for (auto element = elements.begin(); element != elements.end(); ++element) {
             const auto* current = *element;
+            if (!detail::renders_in_place(current)) {
+                continue;
+            }
             auto current_box = current->measured_layout_bbox();
             if (!detail::bbox_is_measured(current_box)) {
                 continue;
