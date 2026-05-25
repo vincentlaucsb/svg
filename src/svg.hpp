@@ -123,6 +123,17 @@ namespace SVG {
     using Margins = QuadCoord;
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
+    /** Options for autoscale behavior beyond the margin overloads. */
+    struct AutoscaleOptions {
+        AutoscaleOptions(const Margins& _margins = DEFAULT_MARGINS,
+                         bool _autoscale_nested_svgs = true) :
+                margins(_margins),
+                autoscale_nested_svgs(_autoscale_nested_svgs) {}
+
+        Margins margins;
+        /** Autoscale nested SVG viewports before measuring this element. */
+        bool autoscale_nested_svgs;
+    };
 
     /** Side of a target element where another element should be positioned. */
     enum class RelativeAlignment : unsigned {
@@ -431,6 +442,17 @@ namespace SVG {
 
         inline AffineTransform translate_transform(double x, double y = 0) {
             return { 1, 0, 0, 1, x, y };
+        }
+
+        inline double parse_number_or(const std::string& value, double fallback) {
+            if (value.empty()) return fallback;
+            try {
+                return std::stof(value);
+            } catch (const std::invalid_argument&) {
+                return fallback;
+            } catch (const std::out_of_range&) {
+                return fallback;
+            }
         }
 
         inline std::vector<double> parse_transform_args(std::string args) {
@@ -1351,6 +1373,13 @@ namespace SVG {
         class ConstDepthFirstIterator;
         class DepthFirstRange;
         class ConstDepthFirstRange;
+        struct TraversalOptions {
+            TraversalOptions(bool _descend_into_nested_svgs = true) :
+                    descend_into_nested_svgs(_descend_into_nested_svgs) {}
+
+            /** Yield nested SVGs but skip their children when false. */
+            bool descend_into_nested_svgs;
+        };
 
         Element() = default;
         virtual ~Element() = default;
@@ -1473,10 +1502,14 @@ namespace SVG {
         std::string id() const;
         void autoscale(const Margins& margins=DEFAULT_MARGINS);
         void autoscale(const double margin);
+        /** Autoscale with explicit layout behavior options. */
+        void autoscale(const AutoscaleOptions& options);
         /** Set only the viewBox from content bounds, leaving width and height unchanged. */
         void responsive_autoscale(const Margins& margins=DEFAULT_MARGINS);
         /** Set only the viewBox from content bounds and percentage margins. */
         void responsive_autoscale(const double margin);
+        /** Set only the viewBox using explicit layout behavior options. */
+        void responsive_autoscale(const AutoscaleOptions& options);
         /** Provide explicit bounds for autoscale/layout when built-in measurement is insufficient. */
         Element& layout_bbox(const BoundingBox& bbox);
         /** Remove an explicit autoscale/layout bound override. */
@@ -1513,12 +1546,20 @@ namespace SVG {
         ConstDepthFirstIterator end() const;
         /** Iterate through this element and its descendants in depth-first order. */
         DepthFirstRange depth_first();
+        /** Iterate through this element and its descendants with traversal options. */
+        DepthFirstRange depth_first(TraversalOptions options);
         /** Iterate through this element and its descendants in depth-first order. */
         ConstDepthFirstRange depth_first() const;
+        /** Iterate through this element and its descendants with traversal options. */
+        ConstDepthFirstRange depth_first(TraversalOptions options) const;
         /** Iterate through descendants in depth-first order, excluding this element. */
         DepthFirstRange descendants();
+        /** Iterate through descendants in depth-first order with traversal options. */
+        DepthFirstRange descendants(TraversalOptions options);
         /** Iterate through descendants in depth-first order, excluding this element. */
         ConstDepthFirstRange descendants() const;
+        /** Iterate through descendants in depth-first order with traversal options. */
+        ConstDepthFirstRange descendants(TraversalOptions options) const;
 
     protected:
         std::vector<std::unique_ptr<Element>> children; /** Smart pointers to child elements */
@@ -1527,6 +1568,9 @@ namespace SVG {
         std::vector<const Element*> get_children_helper() const;
         BoundingBox get_autoscale_bbox() const;
         BoundingBox measured_layout_bbox() const;
+        void autoscale_nested_svgs(const AutoscaleOptions& options, bool responsive);
+        static detail::AffineTransform transform_for(const Element* element,
+                                                     const detail::AffineTransform& parent_transform);
         void get_bbox(Element::BoundingBox&) const;
         void set_viewbox_from_bbox(const BoundingBox& bbox, const Margins& margins);
         virtual std::string svg_to_string(const size_t indent_level) const; /** SVG string corresponding to this element */
@@ -1683,12 +1727,13 @@ namespace SVG {
         using reference = Element*&;
 
         DepthFirstIterator() = default;
-        DepthFirstIterator(Element* root, bool include_root) {
+        DepthFirstIterator(Element* root, bool include_root, TraversalOptions options = TraversalOptions()) :
+                options_(options) {
             if (!root) return;
 
             const auto root_transform = transform_for(root, detail::AffineTransform());
             if (include_root) {
-                pending_.push_back(Frame(root, root_transform));
+                pending_.push_back(Frame(root, root_transform, true));
             } else {
                 push_children(root, root_transform);
             }
@@ -1720,13 +1765,15 @@ namespace SVG {
 
     private:
         struct Frame {
-            Frame() : element(nullptr), transform() {}
-            Frame(Element* element, const detail::AffineTransform& transform) :
+            Frame() : element(nullptr), transform(), root(false) {}
+            Frame(Element* element, const detail::AffineTransform& transform, bool root = false) :
                     element(element),
-                    transform(transform) {}
+                    transform(transform),
+                    root(root) {}
 
             Element* element;
             detail::AffineTransform transform;
+            bool root;
         };
 
         static detail::AffineTransform transform_for(Element* element,
@@ -1755,11 +1802,15 @@ namespace SVG {
             current_ = pending_.back();
             pending_.pop_back();
             end_ = false;
-            push_children(current_.element, current_.transform);
+            if (current_.root || options_.descend_into_nested_svgs ||
+                    current_.element->kind() != ElementKind::SVG) {
+                push_children(current_.element, current_.transform);
+            }
         }
 
         std::vector<Frame> pending_;
         Frame current_;
+        TraversalOptions options_;
         bool end_ = true;
     };
 
@@ -1772,12 +1823,15 @@ namespace SVG {
         using reference = const Element*&;
 
         ConstDepthFirstIterator() = default;
-        ConstDepthFirstIterator(const Element* root, bool include_root) {
+        ConstDepthFirstIterator(const Element* root,
+                                bool include_root,
+                                TraversalOptions options = TraversalOptions()) :
+                options_(options) {
             if (!root) return;
 
             const auto root_transform = transform_for(root, detail::AffineTransform());
             if (include_root) {
-                pending_.push_back(Frame(root, root_transform));
+                pending_.push_back(Frame(root, root_transform, true));
             } else {
                 push_children(root, root_transform);
             }
@@ -1809,13 +1863,15 @@ namespace SVG {
 
     private:
         struct Frame {
-            Frame() : element(nullptr), transform() {}
-            Frame(const Element* element, const detail::AffineTransform& transform) :
+            Frame() : element(nullptr), transform(), root(false) {}
+            Frame(const Element* element, const detail::AffineTransform& transform, bool root = false) :
                     element(element),
-                    transform(transform) {}
+                    transform(transform),
+                    root(root) {}
 
             const Element* element;
             detail::AffineTransform transform;
+            bool root;
         };
 
         static detail::AffineTransform transform_for(const Element* element,
@@ -1844,46 +1900,62 @@ namespace SVG {
             current_ = pending_.back();
             pending_.pop_back();
             end_ = false;
-            push_children(current_.element, current_.transform);
+            if (current_.root || options_.descend_into_nested_svgs ||
+                    current_.element->kind() != ElementKind::SVG) {
+                push_children(current_.element, current_.transform);
+            }
         }
 
         std::vector<Frame> pending_;
         Frame current_;
+        TraversalOptions options_;
         bool end_ = true;
     };
 
     class Element::DepthFirstRange {
     public:
-        DepthFirstRange(Element* root, bool include_root) :
-                root_(root), include_root_(include_root) {}
+        DepthFirstRange(Element* root, bool include_root, TraversalOptions options = TraversalOptions()) :
+                root_(root), include_root_(include_root), options_(options) {}
 
-        DepthFirstIterator begin() const { return DepthFirstIterator(root_, include_root_); }
+        DepthFirstIterator begin() const { return DepthFirstIterator(root_, include_root_, options_); }
         DepthFirstIterator end() const { return DepthFirstIterator(); }
 
     private:
         Element* root_;
         bool include_root_;
+        TraversalOptions options_;
     };
 
     class Element::ConstDepthFirstRange {
     public:
-        ConstDepthFirstRange(const Element* root, bool include_root) :
-                root_(root), include_root_(include_root) {}
+        ConstDepthFirstRange(const Element* root,
+                             bool include_root,
+                             TraversalOptions options = TraversalOptions()) :
+                root_(root), include_root_(include_root), options_(options) {}
 
-        ConstDepthFirstIterator begin() const { return ConstDepthFirstIterator(root_, include_root_); }
+        ConstDepthFirstIterator begin() const { return ConstDepthFirstIterator(root_, include_root_, options_); }
         ConstDepthFirstIterator end() const { return ConstDepthFirstIterator(); }
 
     private:
         const Element* root_;
         bool include_root_;
+        TraversalOptions options_;
     };
 
     inline Element::DepthFirstRange Element::depth_first() {
         return { this, true };
     }
 
+    inline Element::DepthFirstRange Element::depth_first(TraversalOptions options) {
+        return { this, true, options };
+    }
+
     inline Element::ConstDepthFirstRange Element::depth_first() const {
         return { this, true };
+    }
+
+    inline Element::ConstDepthFirstRange Element::depth_first(TraversalOptions options) const {
+        return { this, true, options };
     }
 
     inline Element::DepthFirstIterator Element::begin() {
@@ -1906,8 +1978,16 @@ namespace SVG {
         return { this, false };
     }
 
+    inline Element::DepthFirstRange Element::descendants(TraversalOptions options) {
+        return { this, false, options };
+    }
+
     inline Element::ConstDepthFirstRange Element::descendants() const {
         return { this, false };
+    }
+
+    inline Element::ConstDepthFirstRange Element::descendants(TraversalOptions options) const {
+        return { this, false, options };
     }
 
     inline Element::BoundingBox Element::get_bbox() const {
@@ -2193,6 +2273,8 @@ namespace SVG {
 
         Style* css = this->add_child<Style>(); /**< This item's associated CSS stylesheet */
         ElementKind kind() const override { return static_kind; }
+        /** Return the viewport bounds for nested SVGs, or content bounds when no size is set. */
+        BoundingBox get_bbox() const override;
 
     protected:
         std::unique_ptr<Element> clone_element_impl() const override {
@@ -2848,6 +2930,16 @@ namespace SVG {
         return has_layout_bbox_ ? layout_bbox_ : this->get_bbox();
     }
 
+    inline detail::AffineTransform Element::transform_for(
+            const Element* element,
+            const detail::AffineTransform& parent_transform) {
+        if (element->has_attr("transform")) {
+            return detail::multiply(parent_transform,
+                                    detail::parse_supported_transform(element->get_attr("transform")));
+        }
+        return parent_transform;
+    }
+
     namespace detail {
         inline unsigned alignment_count_bits(Alignment value) {
             unsigned count = 0;
@@ -2870,6 +2962,22 @@ namespace SVG {
         inline double bbox_center_y(const Element::BoundingBox& bbox) {
             return bbox.y1 + (bbox.y2 - bbox.y1) / 2;
         }
+    }
+
+    inline Element::BoundingBox SVG::get_bbox() const {
+        const double x = detail::parse_number_or(this->get_attr("x"), 0);
+        const double y = detail::parse_number_or(this->get_attr("y"), 0);
+        const double width = detail::parse_number_or(this->get_attr("width"), NAN);
+        const double height = detail::parse_number_or(this->get_attr("height"), NAN);
+
+        if (!std::isnan(width) && !std::isnan(height)) {
+            return { x, x + width, y, y + height };
+        }
+
+        Element::BoundingBox bbox(NAN, NAN, NAN, NAN);
+        this->Element::get_bbox(bbox);
+        if (!detail::bbox_is_measured(bbox)) return bbox;
+        return { bbox.x1 + x, bbox.x2 + x, bbox.y1 + y, bbox.y2 + y };
     }
 
     inline Element& Element::snap_to(const Element& target,
@@ -2989,8 +3097,26 @@ namespace SVG {
         return *this;
     }
 
+    inline void Element::autoscale_nested_svgs(const AutoscaleOptions& options, bool responsive) {
+        for (auto& child : this->children) {
+            if (child->kind() == SVG::static_kind) {
+                auto* svg_child = static_cast<SVG*>(child.get());
+                if (responsive) {
+                    svg_child->responsive_autoscale(options);
+                } else {
+                    svg_child->autoscale(options);
+                }
+            } else {
+                child->autoscale_nested_svgs(options, responsive);
+            }
+        }
+    }
+
     inline Element::BoundingBox Element::get_autoscale_bbox() const {
-        Element::BoundingBox bbox = this->measured_layout_bbox();
+        Element::BoundingBox bbox =
+            this->kind() == SVG::static_kind && !this->has_layout_bbox()
+                ? Element::BoundingBox(NAN, NAN, NAN, NAN)
+                : this->measured_layout_bbox();
         this->get_bbox(bbox); // Compute the transform-aware descendant bounds
         return bbox;
     }
@@ -3015,55 +3141,73 @@ namespace SVG {
 
     inline void Element::autoscale(const double margin) {
         /** Like other autoscale() but accepts margin as a percentage */
+        AutoscaleOptions nested_options(NO_MARGINS);
+        this->autoscale_nested_svgs(nested_options, false);
         auto bbox = this->get_autoscale_bbox();
         double width = bbox.x2 - bbox.x1,
             height = bbox.y2 - bbox.y1;
 
-        this->autoscale({
+        AutoscaleOptions options({
             width * margin, width * margin,
-            height * margin, height * margin 
-        });
+            height * margin, height * margin
+        }, false);
+        this->autoscale(options);
     }
 
     inline void Element::autoscale(const Margins& margins) {
+        this->autoscale(AutoscaleOptions(margins));
+    }
+
+    inline void Element::autoscale(const AutoscaleOptions& options) {
         /** Automatically set the width, height, and viewBox attribute of this item
          *  so that it can contain all of its children without clipping
          *
          *  @param[in] margins Extra margins for the sides
          */
+        if (options.autoscale_nested_svgs) {
+            this->autoscale_nested_svgs(options, false);
+        }
         auto bbox = this->get_autoscale_bbox();
-        double width = bbox.x2 - bbox.x1 + margins.x1 + margins.x2,
-            height = bbox.y2 - bbox.y1 + margins.y1 + margins.y2;
+        double width = bbox.x2 - bbox.x1 + options.margins.x1 + options.margins.x2,
+            height = bbox.y2 - bbox.y1 + options.margins.y1 + options.margins.y2;
 
         this->set_attr("width", width)
              .set_attr("height", height);
 
-        this->set_viewbox_from_bbox(bbox, margins);
+        this->set_viewbox_from_bbox(bbox, options.margins);
     }
 
     inline void Element::responsive_autoscale(const double margin) {
+        AutoscaleOptions nested_options(NO_MARGINS);
+        this->autoscale_nested_svgs(nested_options, true);
         auto bbox = this->get_autoscale_bbox();
         double width = bbox.x2 - bbox.x1,
             height = bbox.y2 - bbox.y1;
 
-        this->responsive_autoscale({
+        this->responsive_autoscale(AutoscaleOptions({
             width * margin, width * margin,
             height * margin, height * margin
-        });
+        }, false));
     }
 
     inline void Element::responsive_autoscale(const Margins& margins) {
-        this->set_viewbox_from_bbox(this->get_autoscale_bbox(), margins);
+        this->responsive_autoscale(AutoscaleOptions(margins));
+    }
+
+    inline void Element::responsive_autoscale(const AutoscaleOptions& options) {
+        if (options.autoscale_nested_svgs) {
+            this->autoscale_nested_svgs(options, true);
+        }
+        this->set_viewbox_from_bbox(this->get_autoscale_bbox(), options.margins);
     }
 
     inline void Element::get_bbox(Element::BoundingBox& box) const {
         /** Compute a transform-aware bounding box without recursive traversal. */
-        auto elements = this->depth_first();
+        auto elements = this->descendants(TraversalOptions(false));
         for (auto element = elements.begin(); element != elements.end(); ++element) {
             const auto* current = *element;
             auto current_box = current->measured_layout_bbox();
-            if (std::isnan(current_box.x1) || std::isnan(current_box.x2) ||
-                    std::isnan(current_box.y1) || std::isnan(current_box.y2)) {
+            if (!detail::bbox_is_measured(current_box)) {
                 continue;
             }
 

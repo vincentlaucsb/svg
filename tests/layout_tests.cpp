@@ -89,6 +89,59 @@ TEST_CASE("responsive_autoscale preserves explicit display size", "[layout]") {
     REQUIRE(root.get_attr("viewBox") == "0.0 0.0 100.0 50.0");
 }
 
+TEST_CASE("nested SVG bbox uses viewport bounds", "[layout]") {
+    SVG::SVG nested(SVG::Attrs{
+        { "x", "100" },
+        { "y", "50" },
+        { "width", "5" },
+        { "height", "7" }
+    });
+    nested.add_child<SVG::Rect>(0, 0, 100, 100);
+
+    const auto bbox = nested.get_bbox();
+
+    REQUIRE(bbox.x1 == Approx(100));
+    REQUIRE(bbox.x2 == Approx(105));
+    REQUIRE(bbox.y1 == Approx(50));
+    REQUIRE(bbox.y2 == Approx(57));
+}
+
+TEST_CASE("autoscale automatically scales nested SVG children before measuring parent", "[layout]") {
+    SVG::SVG root;
+    auto* nested = root.add_child<SVG::SVG>(SVG::Attrs{
+        { "x", "100" },
+        { "y", "50" },
+        { "width", "1" },
+        { "height", "1" }
+    });
+    nested->add_child<SVG::Rect>(0, 0, 20, 10);
+
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(nested->get_attr("width") == "20.0");
+    REQUIRE(nested->get_attr("height") == "10.0");
+    REQUIRE(nested->get_attr("viewBox") == "0.0 0.0 20.0 10.0");
+    REQUIRE(root.get_attr("viewBox") == "100.0 50.0 20.0 10.0");
+}
+
+TEST_CASE("AutoscaleOptions can preserve nested SVG viewport sizes", "[layout]") {
+    SVG::SVG root;
+    auto* nested = root.add_child<SVG::SVG>(SVG::Attrs{
+        { "x", "100" },
+        { "y", "50" },
+        { "width", "1" },
+        { "height", "1" }
+    });
+    nested->add_child<SVG::Rect>(0, 0, 20, 10);
+
+    root.autoscale(SVG::AutoscaleOptions(SVG::NO_MARGINS, false));
+
+    REQUIRE(nested->get_attr("width") == "1");
+    REQUIRE(nested->get_attr("height") == "1");
+    REQUIRE(nested->get_attr("viewBox").empty());
+    REQUIRE(root.get_attr("viewBox") == "100.0 50.0 1.0 1.0");
+}
+
 TEST_CASE("text bbox approximates baseline text bounds", "[layout]") {
     SVG::Text label(10, 20, "May");
     label.set_attr("font-size", 10);

@@ -59,6 +59,13 @@ int main() {
 
 `autoscale()` measures element geometry, including simple SVG `rotate(...)` transforms and approximate `Text` bounds from `x`, `y`, `dx`, `dy`, `font-size`, `text-anchor`, and baseline attributes. It sets `width`, `height`, and `viewBox`; use `responsive_autoscale()` when the SVG should calculate only `viewBox` and let its container control display size. It does not inspect CSS transforms, rendered effects such as filters or shadows, stroke joins, font metrics, or external stylesheets; pass `SVG::Margins` when the drawing needs extra page space for those effects.
 
+Nested `SVG::SVG` elements are supported as normal SVG viewports. By default, `autoscale()` first autoscales nested SVG children, then measures their viewport boxes in the parent coordinate system. Use `AutoscaleOptions` to preserve existing nested viewport sizes.
+
+```cpp
+SVG::AutoscaleOptions options(SVG::NO_MARGINS, false);
+root.autoscale(options);
+```
+
 ### Output
 
 ```svg

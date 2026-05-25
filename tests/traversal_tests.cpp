@@ -57,6 +57,44 @@ TEST_CASE("const descendants iterates without including the root", "[traversal]"
     REQUIRE(elements == std::vector<const SVG::Element*>({ root.css, group, rect }));
 }
 
+TEST_CASE("depth_first can prune nested SVG descendants", "[traversal]") {
+    SVG::SVG root;
+    auto* nested = root.add_child<SVG::SVG>();
+    auto* nested_rect = nested->add_child<SVG::Rect>();
+    auto* circle = root.add_child<SVG::Circle>();
+
+    std::vector<SVG::Element*> elements;
+    for (auto* element : root.depth_first(SVG::Element::TraversalOptions(false))) {
+        elements.push_back(element);
+    }
+
+    REQUIRE(elements == std::vector<SVG::Element*>({ &root, root.css, nested, circle }));
+    REQUIRE(std::find(elements.begin(), elements.end(), nested_rect) == elements.end());
+}
+
+TEST_CASE("const pruned traversal preserves nested SVG transforms", "[traversal]") {
+    SVG::SVG root;
+    auto* nested = root.add_child<SVG::SVG>(SVG::Attrs{
+        { "x", "5" },
+        { "y", "7" },
+        { "width", "10" },
+        { "height", "10" }
+    });
+    nested->transform().translate(12, 14);
+    nested->add_child<SVG::Rect>(0, 0, 100, 100);
+    const SVG::SVG& const_root = root;
+
+    auto elements = const_root.descendants(SVG::Element::TraversalOptions(false));
+    auto it = elements.begin();
+    REQUIRE(*it == root.css);
+    ++it;
+    REQUIRE(*it == nested);
+
+    const auto origin = it.transform().apply({ 0, 0 });
+    REQUIRE(origin.first == Approx(12));
+    REQUIRE(origin.second == Approx(14));
+}
+
 TEST_CASE("autoscale traverses deeply nested documents without recursion", "[traversal]") {
     SVG::SVG root;
     SVG::Element* current = &root;
