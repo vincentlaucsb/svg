@@ -65,6 +65,42 @@ TEST_CASE("autoscale includes simple rotate transforms", "[layout]") {
     REQUIRE(root.get_attr("viewBox") == "-20.0 0.0 20.0 10.0");
 }
 
+TEST_CASE("rotate_about_bbox rotates text around bottom-right bounds", "[layout]") {
+    SVG::Text label(10, 20, "May");
+    label.set_attr("font-size", 10);
+
+    label.transform().rotate_about_bbox(-45, SVG::Anchor::End, SVG::Anchor::End);
+
+    REQUIRE(label.get_attr("transform").find("rotate(-45.0 28.0 24.0)") != std::string::npos);
+}
+
+TEST_CASE("autoscale includes text rotated around its measured bbox", "[layout]") {
+    SVG::SVG root;
+    auto* label = root.add_child<SVG::Text>(10, 20, "May");
+    label->set_attr("font-size", 10);
+    label->transform().rotate_about_bbox(-90, SVG::Anchor::End, SVG::Anchor::End);
+
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(root.get_attr("viewBox") == "16.0 24.0 12.0 18.0");
+}
+
+TEST_CASE("rotate_about_bbox supports rect bounds", "[layout]") {
+    SVG::Rect rect(10, 20, 30, 40);
+
+    rect.transform().rotate_about_bbox(30, SVG::Anchor::Start, SVG::Anchor::Center);
+
+    REQUIRE(rect.get_attr("transform") == "rotate(30.0 10.0 40.0)");
+}
+
+TEST_CASE("rotate_about_bbox rejects unmeasurable bounds", "[layout]") {
+    SVG::Group group;
+
+    REQUIRE_THROWS_AS(
+        group.transform().rotate_about_bbox(15, SVG::Anchor::Center, SVG::Anchor::Center),
+        std::logic_error);
+}
+
 TEST_CASE("responsive_autoscale sets viewBox without width or height", "[layout]") {
     SVG::SVG root;
     root.add_child<SVG::Rect>(100, 50, 20, 10);

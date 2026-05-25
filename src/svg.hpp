@@ -61,6 +61,7 @@ namespace SVG {
      *  @brief Main namespace for SVG for C++
      */
     class AttributeMap;
+    class Element;
     class SVG;
     class Shape;
     class Symbol;
@@ -672,8 +673,10 @@ namespace SVG {
     class TransformList {
     public:
         TransformList() = default;
-        explicit TransformList(std::string& value) : mutable_value_(&value), value_(&value) {}
-        explicit TransformList(const std::string& value) : value_(&value) {}
+        explicit TransformList(std::string& value, const Element* owner = nullptr) :
+                mutable_value_(&value), value_(&value), owner_(owner) {}
+        explicit TransformList(const std::string& value, const Element* owner = nullptr) :
+                value_(&value), owner_(owner) {}
 
         /** Append a raw transform function or function list */
         TransformList& append(const std::string& transform) {
@@ -734,6 +737,9 @@ namespace SVG {
                           to_string(cy) + ")");
         }
 
+        /** Append rotate(degrees cx cy) using an owning element's measured layout bbox. */
+        TransformList& rotate_about_bbox(double degrees, Anchor x_anchor, Anchor y_anchor);
+
         TransformList& skew_x(double degrees) {
             return append("skewX(" + to_string(degrees) + ")");
         }
@@ -774,6 +780,7 @@ namespace SVG {
 
         std::string* mutable_value_ = nullptr;
         const std::string* value_ = nullptr;
+        const Element* owner_ = nullptr;
     };
 
     /** @namespace util
@@ -1535,6 +1542,20 @@ namespace SVG {
                           Axis axis,
                           Anchor anchor,
                           Point offset = Point(0, 0));
+        TransformList transform_list() {
+            return TransformList(this->mutable_attrs()["transform"], this);
+        }
+        TransformList transform_list() const {
+            const auto& attributes = this->attrs();
+            const auto found = attributes.find("transform");
+            return found == attributes.end() ? TransformList() : TransformList(found->second, this);
+        }
+        TransformList transform() {
+            return transform_list();
+        }
+        TransformList transform() const {
+            return transform_list();
+        }
         virtual BoundingBox get_bbox() const;
         ChildMap get_children();
         ConstChildMap get_children() const;
@@ -2962,6 +2983,36 @@ namespace SVG {
         inline double bbox_center_y(const Element::BoundingBox& bbox) {
             return bbox.y1 + (bbox.y2 - bbox.y1) / 2;
         }
+
+        inline double bbox_anchor_x(const Element::BoundingBox& bbox, Anchor anchor) {
+            if (anchor == Anchor::Start) return bbox.x1;
+            if (anchor == Anchor::Center) return bbox_center_x(bbox);
+            if (anchor == Anchor::End) return bbox.x2;
+            throw std::invalid_argument("rotate_about_bbox requires a valid x anchor");
+        }
+
+        inline double bbox_anchor_y(const Element::BoundingBox& bbox, Anchor anchor) {
+            if (anchor == Anchor::Start) return bbox.y1;
+            if (anchor == Anchor::Center) return bbox_center_y(bbox);
+            if (anchor == Anchor::End) return bbox.y2;
+            throw std::invalid_argument("rotate_about_bbox requires a valid y anchor");
+        }
+    }
+
+    inline TransformList& TransformList::rotate_about_bbox(double degrees,
+                                                           Anchor x_anchor,
+                                                           Anchor y_anchor) {
+        validate_appendable();
+        if (!owner_) {
+            throw std::logic_error("rotate_about_bbox requires an owning element transform list");
+        }
+        const auto bbox = owner_->layout_bbox();
+        if (!detail::bbox_is_measured(bbox)) {
+            throw std::logic_error("rotate_about_bbox requires measured layout bounds");
+        }
+        return rotate(degrees,
+                      detail::bbox_anchor_x(bbox, x_anchor),
+                      detail::bbox_anchor_y(bbox, y_anchor));
     }
 
     inline Element::BoundingBox SVG::get_bbox() const {

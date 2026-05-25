@@ -201,5 +201,11 @@ callout->layout_bbox({ 0, 80, 0, 18 });
 callout->align_to(plot_area, SVG::Axis::Y, SVG::Anchor::Center, { 16, 0 });
 ```
 
+Use `rotate_about_bbox()` when a label or annotation should rotate around a measured corner or center while still using a normal SVG `transform` attribute that autoscale can measure.
+
+```cpp
+label->transform().rotate_about_bbox(-45, SVG::Anchor::End, SVG::Anchor::End);
+```
+
 ## Simple Animations
 This package supports creating basic animations via CSS keyframes via the frame_animate() function.
