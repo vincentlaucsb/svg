@@ -1,0 +1,123 @@
+<svg height="294.0" role="img" viewBox="-32.1 -17.0 784.3 294.0" width="784.3" xmlns="http://www.w3.org/2000/svg">
+	<style type="text/css">
+		<![CDATA[
+			.sign-panel {
+				fill: var(--svg-open-panel);
+				filter: drop-shadow(0 10px 16px var(--svg-open-glow));
+				stroke: var(--svg-open-panel-stroke);
+				stroke-width: 3;
+			}
+			.sign-screw {
+				fill: var(--svg-open-screw-fill);
+				opacity: 0.72;
+				stroke: var(--svg-open-screw-stroke);
+				stroke-width: 1.5;
+			}
+			.sign-scuff {
+				opacity: 0.34;
+				stroke: var(--svg-open-scuff);
+				stroke-linecap: round;
+				stroke-width: 1.4;
+			}
+			.sign-subtitle {
+				dominant-baseline: middle;
+				fill: var(--svg-open-text);
+				filter: drop-shadow(0 0 8px var(--svg-open-glow));
+				font-family: cursive;
+				font-size: 34px;
+				font-weight: 400;
+				opacity: 0.82;
+				text-anchor: start;
+			}
+			.sign-tube {
+				animation: svg-open-hum 5.4s ease-in-out infinite;
+				fill: none;
+				opacity: 1;
+				stroke: var(--svg-open-tube);
+				stroke-linejoin: round;
+				stroke-width: 4;
+			}
+			.sign-v {
+				animation: svg-open-v-flicker 7.8s ease-in-out infinite;
+			}
+			.sign-word {
+				animation: svg-open-hum 5.4s ease-in-out infinite;
+				dominant-baseline: middle;
+				fill: var(--svg-open-text);
+				filter: drop-shadow(0 0 16px var(--svg-open-glow));
+				font-family: Arial, Helvetica, sans-serif;
+				font-size: 150px;
+				font-weight: 700;
+				paint-order: stroke fill;
+				stroke: var(--svg-open-word-stroke);
+				stroke-width: 1.8;
+				text-anchor: middle;
+			}
+			:root {
+				--svg-open-glow: #64b2ff;
+				--svg-open-panel: #060d14;
+				--svg-open-panel-stroke: #1a3856;
+				--svg-open-screw-fill: #1a2027;
+				--svg-open-screw-stroke: #49545f;
+				--svg-open-scuff: #b6c8d9;
+				--svg-open-text: #d8ecff;
+				--svg-open-tube: #4fa8ff;
+				--svg-open-word-stroke: #f1f8ff;
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.sign-tube {
+					animation: none;
+				}
+				.sign-v {
+					animation: none;
+				}
+				.sign-word {
+					animation: none;
+				}
+			}
+			@keyframes svg-open-hum {
+				0%, 100% {
+					filter: drop-shadow(0 0 8px var(--svg-open-glow));
+					opacity: 0.76;
+				}
+				45% {
+					filter: drop-shadow(0 0 22px var(--svg-open-glow));
+					opacity: 1;
+				}
+				62% {
+					filter: drop-shadow(0 0 12px var(--svg-open-glow));
+					opacity: 0.88;
+				}
+			}
+			@keyframes svg-open-v-flicker {
+				0% {
+					filter: none;
+					opacity: 0.18;
+				}
+				10%, 72%, 82%, 100% {
+					filter: drop-shadow(0 0 22px var(--svg-open-glow));
+					opacity: 1;
+				}
+				75%, 79% {
+					filter: none;
+					opacity: 0.18;
+				}
+			}
+		]]>
+	</style>
+	<title>SVG for C++ blue neon sign</title>
+	<g class="sign-shell" transform="rotate(-1.2 360.0 130.0)">
+		<rect class="sign-panel" height="212.0" rx="28" width="672.0" x="24.0" y="24.0" />
+		<rect class="sign-tube" height="176.0" rx="22" width="632.0" x="44.0" y="42.0" />
+		<circle class="sign-screw" cx="64.0" cy="58.0" r="6.0" />
+		<circle class="sign-screw" cx="656.0" cy="58.0" r="6.0" />
+		<line class="sign-scuff" x1="86.0" x2="132.0" y1="190.0" y2="178.0" />
+		<line class="sign-scuff" x1="586.0" x2="632.0" y1="70.0" y2="62.0" />
+		<g class="sign-word">
+			<text x="250.0" y="128.0">S</text>
+			<text class="sign-v" x="360.0" y="128.0">V</text>
+			<text x="470.0" y="128.0">G</text>
+		</g>
+		<text class="sign-subtitle" x="518.0" y="182.0">for C++</text>
+	</g>
+</svg>

@@ -21,6 +21,93 @@ TEST_CASE("get_children includes nested descendants", "[traversal]") {
     REQUIRE(child_map["circle"].size() == 2);
 }
 
+TEST_CASE("range-for iterates elements in depth-first document order", "[traversal]") {
+    SVG::SVG root;
+    auto* group = root.add_child<SVG::Group>();
+    auto* rect = group->add_child<SVG::Rect>();
+    auto* circle = group->add_child<SVG::Circle>();
+
+    std::vector<SVG::Element*> elements;
+    for (auto* element : root) elements.push_back(element);
+
+    REQUIRE(elements == std::vector<SVG::Element*>({ &root, root.css, group, rect, circle }));
+}
+
+TEST_CASE("const range-for iterates elements in depth-first document order", "[traversal]") {
+    SVG::SVG root;
+    auto* group = root.add_child<SVG::Group>();
+    auto* rect = group->add_child<SVG::Rect>();
+    const SVG::SVG& const_root = root;
+
+    std::vector<const SVG::Element*> elements;
+    for (const auto* element : const_root) elements.push_back(element);
+
+    REQUIRE(elements == std::vector<const SVG::Element*>({ &root, root.css, group, rect }));
+}
+
+TEST_CASE("const descendants iterates without including the root", "[traversal]") {
+    SVG::SVG root;
+    auto* group = root.add_child<SVG::Group>();
+    auto* rect = group->add_child<SVG::Rect>();
+    const SVG::SVG& const_root = root;
+
+    std::vector<const SVG::Element*> elements;
+    for (const auto* element : const_root.descendants()) elements.push_back(element);
+
+    REQUIRE(elements == std::vector<const SVG::Element*>({ root.css, group, rect }));
+}
+
+TEST_CASE("depth_first can prune nested SVG descendants", "[traversal]") {
+    SVG::SVG root;
+    auto* nested = root.add_child<SVG::SVG>();
+    auto* nested_rect = nested->add_child<SVG::Rect>();
+    auto* circle = root.add_child<SVG::Circle>();
+
+    std::vector<SVG::Element*> elements;
+    for (auto* element : root.depth_first(SVG::Element::TraversalOptions(false))) {
+        elements.push_back(element);
+    }
+
+    REQUIRE(elements == std::vector<SVG::Element*>({ &root, root.css, nested, circle }));
+    REQUIRE(std::find(elements.begin(), elements.end(), nested_rect) == elements.end());
+}
+
+TEST_CASE("const pruned traversal preserves nested SVG transforms", "[traversal]") {
+    SVG::SVG root;
+    auto* nested = root.add_child<SVG::SVG>(SVG::Attrs{
+        { "x", "5" },
+        { "y", "7" },
+        { "width", "10" },
+        { "height", "10" }
+    });
+    nested->transform().translate(12, 14);
+    nested->add_child<SVG::Rect>(0, 0, 100, 100);
+    const SVG::SVG& const_root = root;
+
+    auto elements = const_root.descendants(SVG::Element::TraversalOptions(false));
+    auto it = elements.begin();
+    REQUIRE(*it == root.css);
+    ++it;
+    REQUIRE(*it == nested);
+
+    const auto origin = it.transform().apply({ 0, 0 });
+    REQUIRE(origin.first == Approx(12));
+    REQUIRE(origin.second == Approx(14));
+}
+
+TEST_CASE("autoscale traverses deeply nested documents without recursion", "[traversal]") {
+    SVG::SVG root;
+    SVG::Element* current = &root;
+    for (int i = 0; i < 2048; ++i) {
+        current = current->add_child<SVG::Group>();
+    }
+    current->add_child<SVG::Rect>(2, 3, 10, 5);
+
+    root.autoscale({ 1, 1, 2, 2 });
+
+    REQUIRE(root.get_attr("viewBox") == "1.0 1.0 12.0 9.0");
+}
+
 TEST_CASE("Templated get_children filters descendants by exact type", "[traversal]") {
     SVG::SVG root = two_circles();
     std::vector<SVG::SVG*> containers = root.get_children<SVG::SVG>();
@@ -28,11 +115,27 @@ TEST_CASE("Templated get_children filters descendants by exact type", "[traversa
     std::vector<SVG::Circle*> circles = root.get_children<SVG::Circle>();
 
     REQUIRE(SVG::tag_name(SVG::Circle::static_kind) == "circle");
+    REQUIRE(SVG::tag_name(SVG::Title::static_kind) == "title");
     REQUIRE(groups.front()->kind() == SVG::ElementKind::Group);
     REQUIRE(circles.front()->kind() == SVG::ElementKind::Circle);
     REQUIRE(containers.size() == 0);
     REQUIRE(groups.size() == 1);
     REQUIRE(circles.size() == 2);
+}
+
+TEST_CASE("Built-in elements return their specific kinds", "[traversal]") {
+    SVG::Title title("Chart summary");
+    SVG::Circle circle;
+
+    REQUIRE(title.kind() == SVG::ElementKind::Title);
+    REQUIRE(circle.kind() == SVG::ElementKind::Circle);
+}
+
+TEST_CASE("G aliases Group", "[traversal]") {
+    SVG::G group;
+
+    REQUIRE(group.kind() == SVG::ElementKind::Group);
+    REQUIRE(SVG::tag_name(group.kind()) == "g");
 }
 
 TEST_CASE("get_element_by_id finds nested elements", "[traversal]") {
@@ -125,4 +228,40 @@ TEST_CASE("get_elements_by_class matches tokenized classes", "[traversal]") {
     REQUIRE(matches.size() == 2);
     REQUIRE(matches[0] == first);
     REQUIRE(matches[1] == third);
+}
+
+TEST_CASE("SVG clone deep copies elements and preserves id lookup", "[traversal]") {
+    SVG::SVG root;
+    root.style(".mark").set_attr("fill", SVG::Color::hex("#ff4fd8"));
+    auto* group = root.add_child<SVG::Group>(SVG::Attrs{{ "id", "layer" }});
+    auto* rect = group->add_child<SVG::Rect>(
+        1, 2, 3, 4,
+        SVG::Attrs{{ "id", "mark" }, { "class", "mark" }});
+
+    auto copy = root.clone();
+    auto* copied_rect = copy.get_element_by_id<SVG::Rect>("mark");
+    const SVG::SVG& const_copy = copy;
+    const auto* const_rect = const_copy.get_element_by_id<SVG::Rect>("mark");
+
+    REQUIRE(copied_rect != nullptr);
+    REQUIRE(copied_rect != rect);
+    REQUIRE(const_rect == copied_rect);
+    REQUIRE(const_copy.get_children<SVG::Rect>().size() == 1);
+    REQUIRE(const_copy.get_elements_by_class("mark").size() == 1);
+
+    copied_rect->set_attr("fill", SVG::Color::hex("#44ff88"));
+
+    REQUIRE(rect->get_attr("fill").empty());
+    REQUIRE(copied_rect->get_attr("fill") == "#44ff88");
+    REQUIRE(std::string(const_copy).find("fill=\"#44ff88\"") != std::string::npos);
+}
+
+TEST_CASE("SVG copy construction deep copies documents", "[traversal]") {
+    SVG::SVG root;
+    root.add_child<SVG::Circle>("dot");
+
+    SVG::SVG constructed(root);
+
+    REQUIRE(constructed.get_element_by_id<SVG::Circle>("dot") != root.get_element_by_id<SVG::Circle>("dot"));
+    REQUIRE(constructed.get_element_by_id<SVG::Circle>("dot") != nullptr);
 }

@@ -5,12 +5,20 @@
 namespace {
     class CustomFilter : public SVG::Element {
     public:
-        static constexpr SVG::ElementKind static_kind = SVG::ElementKind::Custom;
         using SVG::Element::Element;
-        SVG::ElementKind kind() const override { return static_kind; }
 
     protected:
         std::string tag() override { return "feGaussianBlur"; }
+    };
+
+    class CloneableCustomFilter : public CustomFilter {
+    public:
+        using CustomFilter::CustomFilter;
+
+    protected:
+        std::unique_ptr<SVG::Element> clone_element_impl() const override {
+            return clone_as<CloneableCustomFilter>();
+        }
     };
 }
 
@@ -36,6 +44,22 @@ TEST_CASE("Nested elements serialize with proper indentation", "[render]") {
     REQUIRE(std::string(root) == correct);
 }
 
+TEST_CASE("add_child applies trailing Attrs after construction", "[render]") {
+    SVG::SVG root;
+    auto* group = root.add_child<SVG::Group>(SVG::Attrs{{ "class", "plot marks" }});
+    auto* label = group->add_child<SVG::Text>(
+        12, 24, "Volume",
+        SVG::Attrs{{ "class", "axis-label" }, { "data-side", "left" }});
+
+    const std::string svg = root;
+
+    REQUIRE(group->get_attr("class") == "plot marks");
+    REQUIRE(label->get_attr("data-side") == "left");
+    REQUIRE(svg.find("<g class=\"plot marks\">") != std::string::npos);
+    REQUIRE(svg.find("<text class=\"axis-label\" data-side=\"left\" x=\"12.0\" y=\"24.0\">Volume</text>") !=
+            std::string::npos);
+}
+
 TEST_CASE("Doubles serialize to one decimal place", "[render]") {
     SVG::SVG root;
     root.add_child<SVG::Line>(0.0, 0.0, PI, PI);
@@ -51,6 +75,14 @@ TEST_CASE("Text serializes content between tags", "[render]") {
     root.add_child<SVG::Text>(10, 20, "Workout");
 
     REQUIRE(std::string(root).find("<text x=\"10.0\" y=\"20.0\">Workout</text>") != std::string::npos);
+}
+
+TEST_CASE("Title serializes escaped content between tags", "[render]") {
+    SVG::SVG root;
+    root.add_child<SVG::Title>("A & B < C \"D\" 'E'");
+
+    REQUIRE(std::string(root).find("<title>A &amp; B &lt; C &quot;D&quot; &apos;E&apos;</title>") !=
+            std::string::npos);
 }
 
 TEST_CASE("XML-sensitive values are escaped when rendering", "[render]") {
@@ -90,6 +122,48 @@ TEST_CASE("Symbols and uses serialize reusable marks", "[render]") {
             std::string::npos);
 }
 
+TEST_CASE("Defs helpers create and reuse linear gradients", "[render]") {
+    SVG::SVG root;
+    auto& gradient = root.defs()->linear_gradient("gym-mtb")
+        .horizontal()
+        .solid_segments({ "#2563eb", "#f97316" });
+    auto* rect = root.add_child<SVG::Rect>(0, 0, 10, 10);
+    rect->set_attr("fill", gradient.url());
+
+    const std::string svg = root;
+
+    REQUIRE(&root.defs()->linear_gradient("gym-mtb") == &gradient);
+    REQUIRE(svg.find("<linearGradient id=\"gym-mtb\" x1=\"0%\" x2=\"100%\" y1=\"0%\" y2=\"0%\">") !=
+            std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"0.0%\" stop-color=\"#2563eb\" />") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"50.0%\" stop-color=\"#2563eb\" />") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"50.0%\" stop-color=\"#f97316\" />") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"100.0%\" stop-color=\"#f97316\" />") != std::string::npos);
+    REQUIRE(svg.find("<rect fill=\"url(#gym-mtb)\" height=\"10.0\" width=\"10.0\" x=\"0.0\" y=\"0.0\" />") !=
+            std::string::npos);
+}
+
+TEST_CASE("Defs helpers create radial gradients with stops", "[render]") {
+    SVG::SVG root;
+    auto& radial = root.defs()->radial_gradient("spot")
+        .center("50%", "50%")
+        .radius("50%")
+        .stop("0%", SVG::Color::hex("#ffffff"), 0.5)
+        .stop("100%", "#000000");
+    auto* circle = root.add_child<SVG::Circle>(0, 0, 10);
+    circle->set_attr("fill", radial.url());
+
+    const std::string svg = root;
+
+    REQUIRE(&root.defs()->radial_gradient("spot") == &radial);
+    REQUIRE(svg.find("<radialGradient cx=\"50%\" cy=\"50%\" id=\"spot\" r=\"50%\">") != std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"0%\" stop-color=\"#ffffff\" stop-opacity=\"0.5\" />") !=
+            std::string::npos);
+    REQUIRE(svg.find("<stop offset=\"100%\" stop-color=\"#000000\" />") != std::string::npos);
+    REQUIRE(svg.find("<circle cx=\"0.0\" cy=\"0.0\" fill=\"url(#spot)\" r=\"10.0\" />") !=
+            std::string::npos);
+}
+
 TEST_CASE("Defs serialize after root styles", "[render]") {
     SVG::SVG root;
     auto* line = root.add_child<SVG::Line>(0, 0, 10, 10);
@@ -119,5 +193,19 @@ TEST_CASE("Custom elements serialize custom tags and support untyped lookup", "[
     const std::string svg = root;
 
     REQUIRE(root.get_element_by_id("blur") == blur);
+    REQUIRE(blur->kind() == SVG::ElementKind::Custom);
     REQUIRE(svg.find("<feGaussianBlur id=\"blur\" stdDeviation=\"2\" />") != std::string::npos);
+    REQUIRE_THROWS_AS(root.clone(), std::logic_error);
+}
+
+TEST_CASE("Custom elements opt into clone with copy construction", "[render]") {
+    SVG::SVG root;
+    auto* blur = root.add_child<CloneableCustomFilter>("blur");
+    blur->set_attr("stdDeviation", "2");
+
+    auto copy = root.clone();
+    const std::string copied_svg = copy;
+
+    REQUIRE(copy.get_element_by_id("blur") != blur);
+    REQUIRE(copied_svg.find("<feGaussianBlur id=\"blur\" stdDeviation=\"2\" />") != std::string::npos);
 }
