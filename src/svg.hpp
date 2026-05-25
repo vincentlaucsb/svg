@@ -124,6 +124,38 @@ namespace SVG {
     const static Margins DEFAULT_MARGINS = { 10, 10, 10, 10 };
     const static Margins NO_MARGINS = { 0, 0, 0, 0 };
 
+    /** Side of a target element where another element should be positioned. */
+    enum class RelativeAlignment : unsigned {
+        Left = 1u << 0,
+        Top = 1u << 1,
+        Right = 1u << 2,
+        Bottom = 1u << 3
+    };
+
+    /** Anchor point along one axis of an element's layout bounds. */
+    enum class Anchor : unsigned {
+        Start = 1u << 4,
+        Center = 1u << 5,
+        End = 1u << 6
+    };
+
+    /** Axis used when aligning two elements without making them neighbors. */
+    enum class Axis {
+        X,
+        Y
+    };
+
+    /** Bitwise combination of RelativeAlignment and Anchor. */
+    using Alignment = unsigned;
+
+    inline Alignment operator|(RelativeAlignment relative, Anchor anchor) {
+        return static_cast<Alignment>(relative) | static_cast<Alignment>(anchor);
+    }
+
+    inline Alignment operator|(Anchor anchor, RelativeAlignment relative) {
+        return relative | anchor;
+    }
+
     /** CSS color value stored as concrete sRGB channels for palette math. */
     class Color {
     public:
@@ -397,6 +429,10 @@ namespace SVG {
             };
         }
 
+        inline AffineTransform translate_transform(double x, double y = 0) {
+            return { 1, 0, 0, 1, x, y };
+        }
+
         inline std::vector<double> parse_transform_args(std::string args) {
             for (auto& ch : args) {
                 if (ch == ',') {
@@ -448,6 +484,11 @@ namespace SVG {
                         current,
                         args.size() == 1 ? rotate_transform(args[0])
                                          : rotate_transform(args[0], args[1], args[2]));
+                } else if (name == "translate" && (args.size() == 1 || args.size() == 2)) {
+                    current = multiply(
+                        current,
+                        args.size() == 1 ? translate_transform(args[0])
+                                         : translate_transform(args[0], args[1]));
                 }
             }
             return current;
@@ -1444,6 +1485,23 @@ namespace SVG {
         bool has_layout_bbox() const { return has_layout_bbox_; }
         /** Return explicit autoscale/layout bounds, or this element's measured bounds when unset. */
         BoundingBox layout_bbox() const;
+        /** Snap this element to a target side, centered along the target edge by default. */
+        Element& snap_to(const Element& target,
+                         RelativeAlignment relative,
+                         Point offset = Point(0, 0));
+        /** Snap this element using RelativeAlignment | Anchor. */
+        Element& snap_to(const Element& target,
+                         Alignment alignment,
+                         Point offset = Point(0, 0));
+        /** Align this element to a target axis, centered by default. */
+        Element& align_to(const Element& target,
+                          Axis axis,
+                          Point offset = Point(0, 0));
+        /** Align this element to a target axis using the same anchor on both elements. */
+        Element& align_to(const Element& target,
+                          Axis axis,
+                          Anchor anchor,
+                          Point offset = Point(0, 0));
         virtual BoundingBox get_bbox() const;
         ChildMap get_children();
         ConstChildMap get_children() const;
@@ -2788,6 +2846,147 @@ namespace SVG {
 
     inline Element::BoundingBox Element::measured_layout_bbox() const {
         return has_layout_bbox_ ? layout_bbox_ : this->get_bbox();
+    }
+
+    namespace detail {
+        inline unsigned alignment_count_bits(Alignment value) {
+            unsigned count = 0;
+            while (value) {
+                count += value & 1u;
+                value >>= 1u;
+            }
+            return count;
+        }
+
+        inline bool bbox_is_measured(const Element::BoundingBox& bbox) {
+            return !(std::isnan(bbox.x1) || std::isnan(bbox.x2) ||
+                     std::isnan(bbox.y1) || std::isnan(bbox.y2));
+        }
+
+        inline double bbox_center_x(const Element::BoundingBox& bbox) {
+            return bbox.x1 + (bbox.x2 - bbox.x1) / 2;
+        }
+
+        inline double bbox_center_y(const Element::BoundingBox& bbox) {
+            return bbox.y1 + (bbox.y2 - bbox.y1) / 2;
+        }
+    }
+
+    inline Element& Element::snap_to(const Element& target,
+                                     RelativeAlignment relative,
+                                     Point offset) {
+        return snap_to(target, static_cast<Alignment>(relative), offset);
+    }
+
+    inline Element& Element::snap_to(const Element& target,
+                                     Alignment alignment,
+                                     Point offset) {
+        const Alignment relative_mask =
+            static_cast<Alignment>(RelativeAlignment::Left) |
+            static_cast<Alignment>(RelativeAlignment::Top) |
+            static_cast<Alignment>(RelativeAlignment::Right) |
+            static_cast<Alignment>(RelativeAlignment::Bottom);
+        const Alignment anchor_mask =
+            static_cast<Alignment>(Anchor::Start) |
+            static_cast<Alignment>(Anchor::Center) |
+            static_cast<Alignment>(Anchor::End);
+
+        const Alignment relative = alignment & relative_mask;
+        Alignment anchor = alignment & anchor_mask;
+        if (detail::alignment_count_bits(relative) != 1) {
+            throw std::invalid_argument("snap_to requires exactly one relative alignment");
+        }
+        if (anchor == 0) {
+            anchor = static_cast<Alignment>(Anchor::Center);
+        } else if (detail::alignment_count_bits(anchor) != 1) {
+            throw std::invalid_argument("snap_to requires at most one anchor");
+        }
+        if ((alignment & ~(relative_mask | anchor_mask)) != 0) {
+            throw std::invalid_argument("snap_to received unknown alignment bits");
+        }
+
+        const auto source_box = this->layout_bbox();
+        const auto target_box = target.layout_bbox();
+        if (!detail::bbox_is_measured(source_box) || !detail::bbox_is_measured(target_box)) {
+            throw std::logic_error("snap_to requires measured layout bounds");
+        }
+
+        double dx = 0;
+        double dy = 0;
+        if (relative == static_cast<Alignment>(RelativeAlignment::Left)) {
+            dx = target_box.x1 - source_box.x2;
+        } else if (relative == static_cast<Alignment>(RelativeAlignment::Right)) {
+            dx = target_box.x2 - source_box.x1;
+        } else if (relative == static_cast<Alignment>(RelativeAlignment::Top)) {
+            dy = target_box.y1 - source_box.y2;
+        } else if (relative == static_cast<Alignment>(RelativeAlignment::Bottom)) {
+            dy = target_box.y2 - source_box.y1;
+        }
+
+        if (relative == static_cast<Alignment>(RelativeAlignment::Left) ||
+                relative == static_cast<Alignment>(RelativeAlignment::Right)) {
+            if (anchor == static_cast<Alignment>(Anchor::Start)) {
+                dy = target_box.y1 - source_box.y1;
+            } else if (anchor == static_cast<Alignment>(Anchor::Center)) {
+                dy = detail::bbox_center_y(target_box) - detail::bbox_center_y(source_box);
+            } else {
+                dy = target_box.y2 - source_box.y2;
+            }
+        } else {
+            if (anchor == static_cast<Alignment>(Anchor::Start)) {
+                dx = target_box.x1 - source_box.x1;
+            } else if (anchor == static_cast<Alignment>(Anchor::Center)) {
+                dx = detail::bbox_center_x(target_box) - detail::bbox_center_x(source_box);
+            } else {
+                dx = target_box.x2 - source_box.x2;
+            }
+        }
+
+        this->transform().translate(dx + offset.first, dy + offset.second);
+        return *this;
+    }
+
+    inline Element& Element::align_to(const Element& target,
+                                      Axis axis,
+                                      Point offset) {
+        return align_to(target, axis, Anchor::Center, offset);
+    }
+
+    inline Element& Element::align_to(const Element& target,
+                                      Axis axis,
+                                      Anchor anchor,
+                                      Point offset) {
+        const auto source_box = this->layout_bbox();
+        const auto target_box = target.layout_bbox();
+        if (!detail::bbox_is_measured(source_box) || !detail::bbox_is_measured(target_box)) {
+            throw std::logic_error("align_to requires measured layout bounds");
+        }
+        if (anchor != Anchor::Start && anchor != Anchor::Center && anchor != Anchor::End) {
+            throw std::invalid_argument("align_to requires a valid anchor");
+        }
+
+        double dx = offset.first;
+        double dy = offset.second;
+        if (axis == Axis::X) {
+            if (anchor == Anchor::Start) {
+                dx += target_box.x1 - source_box.x1;
+            } else if (anchor == Anchor::Center) {
+                dx += detail::bbox_center_x(target_box) - detail::bbox_center_x(source_box);
+            } else {
+                dx += target_box.x2 - source_box.x2;
+            }
+        } else {
+            if (anchor == Anchor::Start) {
+                dy += target_box.y1 - source_box.y1;
+            } else if (anchor == Anchor::Center) {
+                dy += detail::bbox_center_y(target_box) - detail::bbox_center_y(source_box);
+            } else {
+                dy += target_box.y2 - source_box.y2;
+            }
+        }
+
+        this->transform().translate(dx, dy);
+        return *this;
     }
 
     inline Element::BoundingBox Element::get_autoscale_bbox() const {

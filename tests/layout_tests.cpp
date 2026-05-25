@@ -183,6 +183,81 @@ TEST_CASE("layout bbox does not replace element geometry", "[layout]") {
     REQUIRE(layout.y2 == 50);
 }
 
+TEST_CASE("snap_to positions element to target side with centered edge alignment", "[layout]") {
+    SVG::SVG root;
+    auto* plot = root.add_child<SVG::Rect>(10, 20, 100, 50);
+    auto* legend = root.add_child<SVG::Group>();
+    legend->layout_bbox({ 0, 20, 0, 10 });
+
+    legend->snap_to(*plot, SVG::RelativeAlignment::Right);
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(legend->get_attr("transform") == "translate(110.0 40.0)");
+    REQUIRE(root.get_attr("viewBox") == "10.0 20.0 120.0 50.0");
+}
+
+TEST_CASE("snap_to supports centered relative alignment with offset", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group legend;
+    legend.layout_bbox({ 0, 20, 0, 10 });
+
+    legend.snap_to(plot, SVG::RelativeAlignment::Right, { 12, 0 });
+
+    REQUIRE(legend.get_attr("transform") == "translate(122.0 40.0)");
+}
+
+TEST_CASE("snap_to supports explicit anchor and offset", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group legend;
+    legend.layout_bbox({ 0, 20, 0, 10 });
+
+    legend.snap_to(plot, SVG::RelativeAlignment::Bottom | SVG::Anchor::End, { 0, 8 });
+
+    REQUIRE(legend.get_attr("transform") == "translate(90.0 78.0)");
+}
+
+TEST_CASE("snap_to accepts bitwise relative and edge alignment", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group title;
+    title.layout_bbox({ 0, 40, 0, 12 });
+
+    title.snap_to(plot, SVG::RelativeAlignment::Top | SVG::Anchor::Start, { 0, -4 });
+
+    REQUIRE(title.get_attr("transform") == "translate(10.0 4.0)");
+}
+
+TEST_CASE("snap_to rejects ambiguous alignment", "[layout]") {
+    SVG::Rect plot(0, 0, 10, 10);
+    SVG::Group legend;
+    legend.layout_bbox({ 0, 10, 0, 10 });
+
+    const auto ambiguous = static_cast<SVG::Alignment>(SVG::RelativeAlignment::Left) |
+        static_cast<SVG::Alignment>(SVG::RelativeAlignment::Right) |
+        static_cast<SVG::Alignment>(SVG::Anchor::Center);
+
+    REQUIRE_THROWS_AS(legend.snap_to(plot, ambiguous), std::invalid_argument);
+}
+
+TEST_CASE("align_to aligns anchors along the selected axis", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group title;
+    title.layout_bbox({ 0, 40, 0, 12 });
+
+    title.align_to(plot, SVG::Axis::X, SVG::Anchor::Center, { 0, -8 });
+
+    REQUIRE(title.get_attr("transform") == "translate(40.0 -8.0)");
+}
+
+TEST_CASE("align_to defaults to center anchor", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group legend;
+    legend.layout_bbox({ 0, 20, 0, 10 });
+
+    legend.align_to(plot, SVG::Axis::Y, { 12, 0 });
+
+    REQUIRE(legend.get_attr("transform") == "translate(12.0 40.0)");
+}
+
 TEST_CASE("merge combines SVG documents horizontally", "[layout]") {
     auto s1 = two_circles(200, 200, 200);
     auto s2 = two_circles(200, 200, 200);

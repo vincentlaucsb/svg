@@ -181,5 +181,18 @@ label->layout_bbox({ -4, 96, -18, 6 });
 root.autoscale();
 ```
 
+Use `snap_to()` to position measured elements against each other with SVG transforms. Passing only `RelativeAlignment` uses `Anchor::Center`, so offsets do not require spelling out the center anchor. Combine the two enums with `|` when you need start or end alignment along the shared edge. Use `align_to()` when elements should share an axis without becoming neighbors.
+
+```cpp
+legend->layout_bbox({ 0, 120, 0, 28 });
+legend->snap_to(plot_area, SVG::RelativeAlignment::Right, { 12, 0 });
+
+title->layout_bbox({ 0, 240, 0, 24 });
+title->snap_to(plot_area, SVG::RelativeAlignment::Top | SVG::Anchor::Start, { 0, -8 });
+
+callout->layout_bbox({ 0, 80, 0, 18 });
+callout->align_to(plot_area, SVG::Axis::Y, SVG::Anchor::Center, { 16, 0 });
+```
+
 ## Simple Animations
 This package supports creating basic animations via CSS keyframes via the frame_animate() function.
