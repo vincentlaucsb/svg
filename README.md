@@ -29,16 +29,19 @@ int main() {
 
     // Basic CSS support
     auto black = SVG::Color::hex("#000000");
-    root.style("circle").set_attr("fill", black)
-        .set_attr("stroke", black);
+    root.style("circle").set_attr("fill", black);
     root.style("rect#my_rectangle").set_attr("fill", "red");
 
-    // Method 1 of adding elements - add_child<>()
+    // Add elements with add_child<>()
     auto shapes = root.add_child<SVG::Group>();
     auto rect = shapes->add_child<SVG::Rect>("my_rectangle");
 
-    // Method 2 of adding elements - operator<<
-    *shapes << SVG::Circle(-100, -100, 100) << SVG::Circle(100, 100, 100);
+    shapes->add_child<SVG::Circle>(
+        -100, -100, 100,
+        SVG::Attrs{{ "stroke", black }});
+    shapes->add_child<SVG::Circle>(
+        100, 100, 100,
+        SVG::Attrs{{ "stroke", black }});
 
     // Reference elements by id, tag, class name, etc...
     root.get_element_by_id("my_rectangle")
@@ -69,12 +72,11 @@ root.autoscale(options);
 ### Output
 
 ```svg
-<svg height="420.0" viewBox="-210.0 -210.0 420.0 420.0" width="420.0" xmlns="http://www.w3.org/2000/svg">
+<svg height="421.0" viewBox="-210.5 -210.5 421.0 421.0" width="421.0" xmlns="http://www.w3.org/2000/svg">
 	<style type="text/css">
 		<![CDATA[
 			circle {
 				fill: #000000;
-				stroke: #000000;
 			}
 			rect#my_rectangle {
 				fill: red;
@@ -83,8 +85,8 @@ root.autoscale(options);
 	</style>
 	<g>
 		<rect height="40" id="my_rectangle" width="40" x="20" y="20" />
-		<circle cx="-100.0" cy="-100.0" r="100.0" />
-		<circle cx="100.0" cy="100.0" r="100.0" />
+		<circle cx="-100.0" cy="-100.0" r="100.0" stroke="#000000" />
+		<circle cx="100.0" cy="100.0" r="100.0" stroke="#000000" />
 	</g>
 </svg>
 ```

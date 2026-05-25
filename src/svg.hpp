@@ -5,7 +5,7 @@
    ___) | \ V /| |_| |
   |____/   \_/  \____|
 
-  SVG for C++ v0.3.0
+  SVG for C++ v0.4.0
 
   Copyright (c) 2018-2026 Vincent La
   SPDX-License-Identifier: MIT
@@ -1602,7 +1602,7 @@ namespace SVG {
         void autoscale_nested_svgs(const AutoscaleOptions& options, bool responsive);
         static detail::AffineTransform transform_for(const Element* element,
                                                      const detail::AffineTransform& parent_transform);
-        void get_bbox(Element::BoundingBox&) const;
+        void get_bbox(Element::BoundingBox&, bool visible_only = true) const;
         void set_viewbox_from_bbox(const BoundingBox& bbox, const Margins& margins);
         virtual std::string svg_to_string(const size_t indent_level) const; /** SVG string corresponding to this element */
         virtual std::string tag() { return tag_name(this->kind()); } /** The SVG tag of this element */
@@ -2285,6 +2285,8 @@ namespace SVG {
         /** Return this symbol's fragment reference, requiring the symbol to have an id. */
         std::string href() const;
         ElementKind kind() const override { return static_kind; }
+        /** Return the bounds of this symbol's contents for local use references. */
+        Element::BoundingBox get_bbox() const override;
         /** Create a use element that references this symbol. */
         Use use(double x, double y) const;
         /** Create a sized use element that references this symbol. */
@@ -2702,6 +2704,12 @@ namespace SVG {
             throw std::logic_error("SVG symbol must have an id before it can be referenced");
         }
         return "#" + symbol_id;
+    }
+
+    inline Element::BoundingBox Symbol::get_bbox() const {
+        Element::BoundingBox bbox(NAN, NAN, NAN, NAN);
+        this->Element::get_bbox(bbox, false);
+        return bbox;
     }
 
     inline Use Symbol::use(double x, double y) const {
@@ -3283,30 +3291,26 @@ namespace SVG {
         if (!referenced || referenced == this) return { NAN, NAN, NAN, NAN };
 
         Element::BoundingBox bbox = referenced->layout_bbox();
-        auto elements = referenced->descendants(Element::TraversalOptions(false));
-        for (auto element = elements.begin(); element != elements.end(); ++element) {
-            const auto* current = *element;
-            auto current_box = current->layout_bbox();
-            if (!detail::bbox_is_measured(current_box)) {
-                continue;
-            }
-
-            const auto& transform = element.transform();
-            const auto p1 = transform.apply({ current_box.x1, current_box.y1 });
-            const auto p2 = transform.apply({ current_box.x2, current_box.y1 });
-            const auto p3 = transform.apply({ current_box.x2, current_box.y2 });
-            const auto p4 = transform.apply({ current_box.x1, current_box.y2 });
-            Element::BoundingBox transformed_box(
-                std::min(std::min(p1.first, p2.first), std::min(p3.first, p4.first)),
-                std::max(std::max(p1.first, p2.first), std::max(p3.first, p4.first)),
-                std::min(std::min(p1.second, p2.second), std::min(p3.second, p4.second)),
-                std::max(std::max(p1.second, p2.second), std::max(p3.second, p4.second)));
-            bbox = transformed_box + bbox;
-        }
         if (!detail::bbox_is_measured(bbox)) return bbox;
 
         const auto x = detail::parse_number_or(this->get_attr("x"), 0);
         const auto y = detail::parse_number_or(this->get_attr("y"), 0);
+        const auto width = detail::parse_number_or(this->get_attr("width"), NAN);
+        const auto height = detail::parse_number_or(this->get_attr("height"), NAN);
+        const auto viewbox = detail::parse_transform_args(referenced->get_attr("viewBox"));
+        if (!std::isnan(width) && !std::isnan(height) && viewbox.size() == 4 &&
+                viewbox[2] != 0 && viewbox[3] != 0) {
+            const auto sx = width / viewbox[2];
+            const auto sy = height / viewbox[3];
+            bbox = {
+                x + (bbox.x1 - viewbox[0]) * sx,
+                x + (bbox.x2 - viewbox[0]) * sx,
+                y + (bbox.y1 - viewbox[1]) * sy,
+                y + (bbox.y2 - viewbox[1]) * sy
+            };
+            return include_stroke_width(bbox);
+        }
+
         bbox = { bbox.x1 + x, bbox.x2 + x, bbox.y1 + y, bbox.y2 + y };
         return include_stroke_width(bbox);
     }
@@ -3548,12 +3552,12 @@ namespace SVG {
         this->set_viewbox_from_bbox(this->get_autoscale_bbox(), options.margins);
     }
 
-    inline void Element::get_bbox(Element::BoundingBox& box) const {
+    inline void Element::get_bbox(Element::BoundingBox& box, bool visible_only) const {
         /** Compute a transform-aware bounding box without recursive traversal. */
         auto elements = this->descendants(TraversalOptions(false));
         for (auto element = elements.begin(); element != elements.end(); ++element) {
             const auto* current = *element;
-            if (!detail::renders_in_place(current)) {
+            if (visible_only && !detail::renders_in_place(current)) {
                 continue;
             }
             auto current_box = current->measured_layout_bbox();
