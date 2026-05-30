@@ -66,7 +66,6 @@ namespace SVG {
     class RadialGradient;
     class SVG;
     class Shape;
-    class Stop;
     class Symbol;
     class Use;
 
@@ -480,6 +479,252 @@ namespace SVG {
             }
             return values;
         }
+
+        class TextEstimator {
+        public:
+            struct Metrics {
+                double width = 0;
+                double height = 0;
+                double ascent = 0;
+                double descent = 0;
+            };
+
+            TextEstimator(std::string text_, double font_size_, std::string font_weight_) :
+                    text(std::move(text_)),
+                    font_size(font_size_ > 0 ? font_size_ : 16),
+                    font_weight(std::move(font_weight_)) {}
+
+            /** Estimated layout metrics only; this does not perform font shaping or browser measurement. */
+            Metrics estimate() const {
+                const auto bold = is_bold();
+                const double weight_multiplier = bold ? 1.06 : 1.0;
+                const double side_padding = bold ? font_size * 0.05 : font_size * 0.02;
+                const double vertical_padding = bold ? font_size * 0.10 : font_size * 0.06;
+                const double line_height = font_size * (bold ? 1.38 : 1.32);
+                const double ascent = font_size * (bold ? 1.00 : 0.96) + vertical_padding;
+                const double descent = font_size * (bold ? 0.38 : 0.34) + vertical_padding;
+
+                double current = 0;
+                double longest = 0;
+                std::size_t lines = text.empty() ? 0 : 1;
+                bool previous_was_joiner = false;
+                bool regional_pair_open = false;
+                std::size_t index = 0;
+
+                while (index < text.size()) {
+                    const auto codepoint = next_codepoint(index);
+                    if (codepoint == '\r') {
+                        if (index < text.size() && text[index] == '\n') ++index;
+                        longest = std::max(longest, current);
+                        current = 0;
+                        ++lines;
+                        previous_was_joiner = false;
+                        regional_pair_open = false;
+                        continue;
+                    }
+                    if (codepoint == '\n') {
+                        longest = std::max(longest, current);
+                        current = 0;
+                        ++lines;
+                        previous_was_joiner = false;
+                        regional_pair_open = false;
+                        continue;
+                    }
+
+                    current += glyph_advance(codepoint, previous_was_joiner, regional_pair_open);
+                    previous_was_joiner = codepoint == 0x200d;
+                }
+
+                longest = std::max(longest, current);
+                Metrics metrics;
+                metrics.width = longest == 0 ? 0 : longest * font_size * weight_multiplier + side_padding * 2;
+                metrics.ascent = ascent;
+                metrics.descent = descent;
+                metrics.height = lines == 0 ? 0 : ascent + descent + static_cast<double>(lines - 1) * line_height;
+                return metrics;
+            }
+
+        private:
+            std::string text;
+            double font_size;
+            std::string font_weight;
+
+            bool is_bold() const {
+                auto value = font_weight;
+                for (auto& ch : value) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (value == "bold" || value == "bolder") return true;
+                return parse_number_or(value, 400) >= 600;
+            }
+
+            uint32_t next_codepoint(std::size_t& index) const {
+                const auto first = static_cast<unsigned char>(text[index++]);
+                if (first < 0x80) return first;
+
+                uint32_t codepoint = 0xfffd;
+                std::size_t continuation_count = 0;
+                if ((first & 0xe0) == 0xc0) {
+                    codepoint = first & 0x1f;
+                    continuation_count = 1;
+                } else if ((first & 0xf0) == 0xe0) {
+                    codepoint = first & 0x0f;
+                    continuation_count = 2;
+                } else if ((first & 0xf8) == 0xf0) {
+                    codepoint = first & 0x07;
+                    continuation_count = 3;
+                } else {
+                    return 0xfffd;
+                }
+
+                for (std::size_t i = 0; i < continuation_count; ++i) {
+                    if (index >= text.size()) return 0xfffd;
+                    const auto next = static_cast<unsigned char>(text[index]);
+                    if ((next & 0xc0) != 0x80) return 0xfffd;
+                    ++index;
+                    codepoint = (codepoint << 6) | (next & 0x3f);
+                }
+
+                if ((continuation_count == 1 && codepoint < 0x80) ||
+                    (continuation_count == 2 && codepoint < 0x800) ||
+                    (continuation_count == 3 && codepoint < 0x10000) ||
+                    codepoint > 0x10ffff ||
+                    (codepoint >= 0xd800 && codepoint <= 0xdfff)) {
+                    return 0xfffd;
+                }
+                return codepoint;
+            }
+
+            static bool in_range(uint32_t value, uint32_t first, uint32_t last) {
+                return value >= first && value <= last;
+            }
+
+            static bool is_combining_mark(uint32_t codepoint) {
+                return in_range(codepoint, 0x0300, 0x036f) ||
+                       in_range(codepoint, 0x0483, 0x0489) ||
+                       in_range(codepoint, 0x0591, 0x05bd) ||
+                       codepoint == 0x05bf ||
+                       in_range(codepoint, 0x05c1, 0x05c2) ||
+                       in_range(codepoint, 0x05c4, 0x05c5) ||
+                       codepoint == 0x05c7 ||
+                       in_range(codepoint, 0x0610, 0x061a) ||
+                       in_range(codepoint, 0x064b, 0x065f) ||
+                       codepoint == 0x0670 ||
+                       in_range(codepoint, 0x06d6, 0x06dc) ||
+                       in_range(codepoint, 0x06df, 0x06e4) ||
+                       in_range(codepoint, 0x06e7, 0x06e8) ||
+                       in_range(codepoint, 0x06ea, 0x06ed) ||
+                       in_range(codepoint, 0x1ab0, 0x1aff) ||
+                       in_range(codepoint, 0x1dc0, 0x1dff) ||
+                       in_range(codepoint, 0x20d0, 0x20ff) ||
+                       in_range(codepoint, 0xfe20, 0xfe2f);
+            }
+
+            static bool is_variation_selector(uint32_t codepoint) {
+                return in_range(codepoint, 0xfe00, 0xfe0f) ||
+                       in_range(codepoint, 0xe0100, 0xe01ef);
+            }
+
+            static bool is_full_width(uint32_t codepoint) {
+                return in_range(codepoint, 0x1100, 0x115f) ||
+                       in_range(codepoint, 0x2329, 0x232a) ||
+                       in_range(codepoint, 0x2e80, 0xa4cf) ||
+                       in_range(codepoint, 0xac00, 0xd7a3) ||
+                       in_range(codepoint, 0xf900, 0xfaff) ||
+                       in_range(codepoint, 0xfe10, 0xfe19) ||
+                       in_range(codepoint, 0xfe30, 0xfe6f) ||
+                       in_range(codepoint, 0xff00, 0xff60) ||
+                       in_range(codepoint, 0xffe0, 0xffe6);
+            }
+
+            static bool is_emoji_or_symbol(uint32_t codepoint) {
+                return in_range(codepoint, 0x1f000, 0x1faff) ||
+                       in_range(codepoint, 0x2600, 0x27bf) ||
+                       in_range(codepoint, 0x2190, 0x21ff) ||
+                       in_range(codepoint, 0x2300, 0x23ff);
+            }
+
+            static bool is_regional_indicator(uint32_t codepoint) {
+                return in_range(codepoint, 0x1f1e6, 0x1f1ff);
+            }
+
+            static bool is_latin_letter(uint32_t codepoint) {
+                return in_range(codepoint, 'A', 'Z') ||
+                       in_range(codepoint, 'a', 'z') ||
+                       in_range(codepoint, 0x00c0, 0x024f);
+            }
+
+            static double ascii_advance(uint32_t codepoint) {
+                switch (codepoint) {
+                    case ' ':
+                    case '\t':
+                    case '.':
+                    case ',':
+                    case ':':
+                    case ';':
+                    case '\'':
+                    case '"':
+                    case '`':
+                    case '!':
+                    case '|':
+                        return 0.34;
+                    case 'i':
+                    case 'j':
+                    case 'l':
+                    case 'I':
+                    case '[':
+                    case ']':
+                    case '(':
+                    case ')':
+                    case '{':
+                    case '}':
+                        return 0.40;
+                    case 'm':
+                    case 'w':
+                    case 'M':
+                    case 'W':
+                    case '@':
+                    case '%':
+                    case '&':
+                        return 0.92;
+                    case '-':
+                    case '_':
+                    case '/':
+                    case '\\':
+                        return 0.52;
+                    default:
+                        break;
+                }
+
+                if (in_range(codepoint, '0', '9')) return 0.64;
+                if (in_range(codepoint, 'A', 'Z')) return 0.72;
+                if (in_range(codepoint, 'a', 'z')) return 0.62;
+                return 0.58;
+            }
+
+            static double glyph_advance(uint32_t codepoint,
+                                        bool previous_was_joiner,
+                                        bool& regional_pair_open) {
+                if (is_combining_mark(codepoint) ||
+                    is_variation_selector(codepoint) ||
+                    codepoint == 0x200d ||
+                    in_range(codepoint, 0x1f3fb, 0x1f3ff)) {
+                    return 0;
+                }
+
+                if (previous_was_joiner) return 0;
+
+                if (is_regional_indicator(codepoint)) {
+                    regional_pair_open = !regional_pair_open;
+                    return regional_pair_open ? 1.10 : 0;
+                }
+                regional_pair_open = false;
+
+                if (codepoint < 0x80) return ascii_advance(codepoint);
+                if (is_full_width(codepoint)) return 1.05;
+                if (is_emoji_or_symbol(codepoint)) return 1.10;
+                if (is_latin_letter(codepoint)) return 0.66;
+                return 0.85;
+            }
+        };
 
         inline AffineTransform parse_supported_transform(const std::string& transform) {
             AffineTransform current;
@@ -1120,41 +1365,45 @@ namespace SVG {
         return *this;
     }
 
-    /** Shared enum-to-string map for typed CSS helpers. */
-    template<typename T>
-    class TypedNames {
-        static_assert(std::is_enum<T>::value, "Typed CSS keys must be an enum type.");
+    /** @cond */
+    namespace detail {
+        /** Shared enum-to-string map for typed CSS helpers. */
+        template<typename T>
+        class TypedNames {
+            static_assert(std::is_enum<T>::value, "Typed CSS keys must be an enum type.");
 
-    public:
-        /** Return the canonical CSS name for a typed key. */
-        std::string name(T key) const {
-            const auto found = this->names_.find(key);
-            if (found == this->names_.end()) {
-                throw std::invalid_argument("Unknown typed CSS key");
-            }
-            return found->second;
-        }
-
-    protected:
-        /** Add one validated typed key/name pair. */
-        void add_name(T key, const std::string& normalized_name, const std::string& duplicate_label) {
-            if (this->names_.find(key) != this->names_.end()) {
-                throw std::invalid_argument("Duplicate typed CSS key");
-            }
-            if (this->used_names_.find(normalized_name) != this->used_names_.end()) {
-                throw std::invalid_argument("Duplicate " + duplicate_label + ": " + normalized_name);
+        public:
+            /** Return the canonical CSS name for a typed key. */
+            std::string name(T key) const {
+                const auto found = this->names_.find(key);
+                if (found == this->names_.end()) {
+                    throw std::invalid_argument("Unknown typed CSS key");
+                }
+                return found->second;
             }
 
-            this->names_[key] = normalized_name;
-            this->used_names_[normalized_name] = key;
-        }
+        protected:
+            /** Add one validated typed key/name pair. */
+            void add_name(T key, const std::string& normalized_name, const std::string& duplicate_label) {
+                if (this->names_.find(key) != this->names_.end()) {
+                    throw std::invalid_argument("Duplicate typed CSS key");
+                }
+                if (this->used_names_.find(normalized_name) != this->used_names_.end()) {
+                    throw std::invalid_argument("Duplicate " + duplicate_label + ": " + normalized_name);
+                }
 
-    private:
-        /** Enum-to-name mapping for this helper. */
-        std::map<T, std::string> names_;
-        /** Reverse map used to reject duplicate output names. */
-        std::map<std::string, T> used_names_;
-    };
+                this->names_[key] = normalized_name;
+                this->used_names_[normalized_name] = key;
+            }
+
+        private:
+            /** Enum-to-name mapping for this helper. */
+            std::map<T, std::string> names_;
+            /** Reverse map used to reject duplicate output names. */
+            std::map<std::string, T> used_names_;
+        };
+    }
+    /** @endcond */
 
     /** Mapping entry for a typed CSS custom property, optionally with an initial value. */
     template<typename T>
@@ -1195,7 +1444,7 @@ namespace SVG {
 
     /** Typed helper for defining and referencing CSS custom properties without stringly lookups. */
     template<typename T>
-    class Variables : public TypedNames<T> {
+    class Variables : public detail::TypedNames<T> {
     public:
         /** Validate the enum-to-name map and apply any initial values to the target style block. */
         Variables(AttributeMap& target, std::initializer_list<VariableSpec<T>> specs) :
@@ -1302,7 +1551,7 @@ namespace SVG {
 
     /** Typed helper for building class attributes and class selectors without stringly lookups. */
     template<typename T>
-    class Classes : public TypedNames<T> {
+    class Classes : public detail::TypedNames<T> {
     public:
         /** Validate and register typed CSS class tokens. */
         Classes(std::initializer_list<ClassSpec<T>> specs) {
@@ -1408,7 +1657,8 @@ namespace SVG {
                 owner_(nullptr),
                 indexed_id_(),
                 has_layout_bbox_(other.has_layout_bbox_),
-                layout_bbox_(other.layout_bbox_) {
+                layout_bbox_(other.layout_bbox_),
+                layout_bbox_padding_(other.layout_bbox_padding_) {
             other.has_layout_bbox_ = false;
             reparent_children();
         }
@@ -1422,6 +1672,7 @@ namespace SVG {
                 indexed_id_.clear();
                 has_layout_bbox_ = other.has_layout_bbox_;
                 layout_bbox_ = other.layout_bbox_;
+                layout_bbox_padding_ = other.layout_bbox_padding_;
                 other.has_layout_bbox_ = false;
                 reparent_children();
             }
@@ -1528,6 +1779,10 @@ namespace SVG {
         void responsive_autoscale(const AutoscaleOptions& options);
         /** Provide explicit bounds for autoscale/layout when built-in measurement is insufficient. */
         Element& layout_bbox(const BoundingBox& bbox);
+        /** Inflate measured autoscale/layout bounds; explicit layout_bbox() overrides this padding. */
+        Element& bbox_padding(const Margins& padding);
+        /** Inflate measured autoscale/layout bounds equally on every side. */
+        Element& bbox_padding(double padding);
         /** Remove an explicit autoscale/layout bound override. */
         Element& clear_layout_bbox();
         /** Return true when autoscale/layout uses caller-provided bounds for this element. */
@@ -1666,6 +1921,7 @@ namespace SVG {
         std::string indexed_id_;
         bool has_layout_bbox_ = false;
         BoundingBox layout_bbox_ = BoundingBox(NAN, NAN, NAN, NAN);
+        Margins layout_bbox_padding_ = NO_MARGINS;
     };
 
     template<>
@@ -1740,7 +1996,8 @@ namespace SVG {
             owner_(nullptr),
             indexed_id_(),
             has_layout_bbox_(other.has_layout_bbox_),
-            layout_bbox_(other.layout_bbox_) {
+            layout_bbox_(other.layout_bbox_),
+            layout_bbox_padding_(other.layout_bbox_padding_) {
         for (const auto& child : other.children) {
             this->insert_child(child->clone_element(), this->children.end());
         }
@@ -2083,89 +2340,93 @@ namespace SVG {
         std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Defs>(); }
     };
 
-    /** Gradient color stop managed by LinearGradient and RadialGradient builders. */
-    class Stop : public Element {
-    public:
-        static constexpr ElementKind static_kind = ElementKind::Stop;
-        Stop() = default;
-        using Element::Element;
-        ElementKind kind() const override { return static_kind; }
+    /** @cond */
+    namespace detail {
+        /** Gradient color stop managed by LinearGradient and RadialGradient builders. */
+        class Stop : public Element {
+        public:
+            static constexpr ElementKind static_kind = ElementKind::Stop;
+            Stop() = default;
+            using Element::Element;
+            ElementKind kind() const override { return static_kind; }
 
-        Stop(std::string offset, std::string color) {
-            this->set_attr("offset", std::move(offset));
-            this->set_attr("stop-color", std::move(color));
-        }
-
-        Stop(std::string offset, std::string color, double opacity) :
-                Stop(std::move(offset), std::move(color)) {
-            this->set_attr("stop-opacity", opacity);
-        }
-
-    protected:
-        std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Stop>(); }
-    };
-
-    /** Shared builder implementation for SVG gradient definitions. */
-    class GradientElement : public Element {
-    public:
-        using Element::Element;
-
-        /** Return the paint server URL for fill or stroke attributes. */
-        std::string url() const {
-            const auto gradient_id = this->id();
-            if (gradient_id.empty()) {
-                throw std::logic_error("SVG gradient must have an id before it can be referenced");
-            }
-            return "url(#" + gradient_id + ")";
-        }
-
-    protected:
-        void add_stop(std::string offset, std::string color) {
-            this->add_child<Stop>(std::move(offset), std::move(color));
-        }
-
-        void add_stop(std::string offset, std::string color, double opacity) {
-            this->add_child<Stop>(std::move(offset), std::move(color), opacity);
-        }
-
-        void set_solid_segments(std::initializer_list<std::string> colors) {
-            if (colors.size() == 0) {
-                throw std::invalid_argument("solid_segments requires at least one color");
+            Stop(std::string offset, std::string color) {
+                this->set_attr("offset", std::move(offset));
+                this->set_attr("stop-color", std::move(color));
             }
 
-            this->clear_children();
-            if (colors.size() == 1) {
-                const auto color = *colors.begin();
-                add_stop("0%", color);
-                add_stop("100%", color);
-                return;
+            Stop(std::string offset, std::string color, double opacity) :
+                    Stop(std::move(offset), std::move(color)) {
+                this->set_attr("stop-opacity", opacity);
             }
 
-            const auto segment_width = 100.0 / static_cast<double>(colors.size());
-            std::size_t index = 0;
-            for (const auto& color : colors) {
-                const auto start = percent(index * segment_width);
-                const auto end = percent((index + 1) * segment_width);
-                add_stop(start, color);
-                add_stop(end, color);
-                ++index;
-            }
-        }
+        protected:
+            std::unique_ptr<Element> clone_element_impl() const override { return clone_as<Stop>(); }
+        };
 
-    private:
-        static std::string percent(double value) {
-            std::stringstream ss;
-            ss << std::fixed << std::setprecision(1) << value << "%";
-            return ss.str();
-        }
-    };
+        /** Shared builder implementation for SVG gradient definitions. */
+        class GradientElement : public Element {
+        public:
+            using Element::Element;
+
+            /** Return the paint server URL for fill or stroke attributes. */
+            std::string url() const {
+                const auto gradient_id = this->id();
+                if (gradient_id.empty()) {
+                    throw std::logic_error("SVG gradient must have an id before it can be referenced");
+                }
+                return "url(#" + gradient_id + ")";
+            }
+
+        protected:
+            void add_stop(std::string offset, std::string color) {
+                this->add_child<Stop>(std::move(offset), std::move(color));
+            }
+
+            void add_stop(std::string offset, std::string color, double opacity) {
+                this->add_child<Stop>(std::move(offset), std::move(color), opacity);
+            }
+
+            void set_solid_segments(std::initializer_list<std::string> colors) {
+                if (colors.size() == 0) {
+                    throw std::invalid_argument("solid_segments requires at least one color");
+                }
+
+                this->clear_children();
+                if (colors.size() == 1) {
+                    const auto color = *colors.begin();
+                    add_stop("0%", color);
+                    add_stop("100%", color);
+                    return;
+                }
+
+                const auto segment_width = 100.0 / static_cast<double>(colors.size());
+                std::size_t index = 0;
+                for (const auto& color : colors) {
+                    const auto start = percent(index * segment_width);
+                    const auto end = percent((index + 1) * segment_width);
+                    add_stop(start, color);
+                    add_stop(end, color);
+                    ++index;
+                }
+            }
+
+        private:
+            static std::string percent(double value) {
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(1) << value << "%";
+                return ss.str();
+            }
+        };
+    }
+    /** @endcond */
 
     /** Linear gradient definition created through Defs::linear_gradient(). */
-    class LinearGradient : public GradientElement {
+    class LinearGradient : public detail::GradientElement {
     public:
         static constexpr ElementKind static_kind = ElementKind::LinearGradient;
         LinearGradient() = default;
-        using GradientElement::GradientElement;
+        using detail::GradientElement::GradientElement;
         ElementKind kind() const override { return static_kind; }
 
         explicit LinearGradient(std::string id) {
@@ -2216,11 +2477,11 @@ namespace SVG {
     };
 
     /** Radial gradient definition created through Defs::radial_gradient(). */
-    class RadialGradient : public GradientElement {
+    class RadialGradient : public detail::GradientElement {
     public:
         static constexpr ElementKind static_kind = ElementKind::RadialGradient;
         RadialGradient() = default;
-        using GradientElement::GradientElement;
+        using detail::GradientElement::GradientElement;
         ElementKind kind() const override { return static_kind; }
 
         explicit RadialGradient(std::string id) {
@@ -2797,43 +3058,8 @@ namespace SVG {
         }
 
     private:
-        static double parse_numeric_or(const std::string& value, double fallback) {
-            if (value.empty()) return fallback;
-            try {
-                return std::stof(value);
-            } catch (const std::invalid_argument&) {
-                return fallback;
-            } catch (const std::out_of_range&) {
-                return fallback;
-            }
-        }
-
         double numeric_attr_or(const std::string& key, double fallback) const {
-            return parse_numeric_or(this->get_attr(key), fallback);
-        }
-
-        static std::size_t line_count(const std::string& text) {
-            if (text.empty()) return 0;
-            std::size_t count = 1;
-            for (const auto ch : text) {
-                if (ch == '\n') ++count;
-            }
-            return count;
-        }
-
-        static std::size_t max_line_codepoints(const std::string& text) {
-            std::size_t current = 0;
-            std::size_t longest = 0;
-            for (const auto ch : text) {
-                if (ch == '\n') {
-                    if (current > longest) longest = current;
-                    current = 0;
-                    continue;
-                }
-                const auto byte = static_cast<unsigned char>(ch);
-                if ((byte & 0xc0) != 0x80) ++current;
-            }
-            return current > longest ? current : longest;
+            return detail::parse_number_or(this->get_attr(key), fallback);
         }
     };
 
@@ -2988,8 +3214,9 @@ namespace SVG {
 
         const double x = numeric_attr_or("x", 0) + numeric_attr_or("dx", 0);
         const double y = numeric_attr_or("y", 0) + numeric_attr_or("dy", 0);
-        const double width = static_cast<double>(max_line_codepoints(content)) * font_size * 0.6;
-        const double height = static_cast<double>(line_count(content)) * font_size * 1.2;
+        const auto metrics = detail::TextEstimator(content, font_size, get_attr("font-weight")).estimate();
+        const double width = metrics.width;
+        const double height = metrics.height;
 
         double x1 = x;
         const auto anchor = this->get_attr("text-anchor", "start");
@@ -3002,7 +3229,7 @@ namespace SVG {
         const auto baseline = this->get_attr(
             "dominant-baseline",
             this->get_attr("alignment-baseline", "alphabetic"));
-        double y1 = y - font_size * 0.8;
+        double y1 = y - metrics.ascent;
         if (baseline == "middle" || baseline == "central" || baseline == "mathematical") {
             y1 = y - height / 2;
         } else if (baseline == "hanging" || baseline == "text-before-edge" || baseline == "text-top") {
@@ -3174,6 +3401,15 @@ namespace SVG {
         return *this;
     }
 
+    inline Element& Element::bbox_padding(const Margins& padding) {
+        layout_bbox_padding_ = padding;
+        return *this;
+    }
+
+    inline Element& Element::bbox_padding(double padding) {
+        return bbox_padding({ padding, padding, padding, padding });
+    }
+
     inline Element& Element::clear_layout_bbox() {
         has_layout_bbox_ = false;
         layout_bbox_ = BoundingBox(NAN, NAN, NAN, NAN);
@@ -3185,7 +3421,18 @@ namespace SVG {
     }
 
     inline Element::BoundingBox Element::measured_layout_bbox() const {
-        return has_layout_bbox_ ? layout_bbox_ : this->get_bbox();
+        if (has_layout_bbox_) return layout_bbox_;
+        auto bbox = this->get_bbox();
+        if (std::isnan(bbox.x1) || std::isnan(bbox.x2) ||
+            std::isnan(bbox.y1) || std::isnan(bbox.y2)) {
+            return bbox;
+        }
+        return {
+            bbox.x1 - layout_bbox_padding_.x1,
+            bbox.x2 + layout_bbox_padding_.x2,
+            bbox.y1 - layout_bbox_padding_.y1,
+            bbox.y2 + layout_bbox_padding_.y2
+        };
     }
 
     inline detail::AffineTransform Element::transform_for(
@@ -3513,7 +3760,7 @@ namespace SVG {
         /** Automatically set the width, height, and viewBox attribute of this item
          *  so that it can contain all of its children without clipping
          *
-         *  @param[in] margins Extra margins for the sides
+         *  @param[in] options Margins and nested SVG autoscale behavior
          */
         if (options.autoscale_nested_svgs) {
             this->autoscale_nested_svgs(options, false);

@@ -210,6 +210,12 @@ label->layout_bbox({ -4, 96, -18, 6 });
 root.autoscale();
 ```
 
+Text layout bounds are estimates, not exact font shaping or browser measurements. The built-in estimator is UTF-8 aware, treats combining marks as zero-width, and uses conservative advances for ASCII, CJK/full-width text, emoji, and bold text. If an element only needs a little extra layout space, use `bbox_padding()`; an explicit `layout_bbox()` still takes precedence.
+
+```cpp
+title->bbox_padding({ 2, 2, 4, 4 });
+```
+
 Use `snap_to()` to position measured elements against each other with SVG transforms. Passing only `RelativeAlignment` uses `Anchor::Center`, so offsets do not require spelling out the center anchor. Combine the two enums with `|` when you need start or end alignment along the shared edge. Use `align_to()` when elements should share an axis without becoming neighbors.
 
 ```cpp
