@@ -465,6 +465,16 @@ namespace SVG {
             }
         }
 
+        template<typename T>
+        struct is_numeric_attr_type {
+            static const bool value =
+                std::is_arithmetic<T>::value &&
+                !std::is_same<typename std::remove_cv<T>::type, bool>::value &&
+                !std::is_same<typename std::remove_cv<T>::type, char>::value &&
+                !std::is_same<typename std::remove_cv<T>::type, signed char>::value &&
+                !std::is_same<typename std::remove_cv<T>::type, unsigned char>::value;
+        };
+
         inline std::vector<double> parse_transform_args(std::string args) {
             for (auto& ch : args) {
                 if (ch == ',') {
@@ -1243,6 +1253,15 @@ namespace SVG {
         std::string get_attr(const std::string& key, const std::string& fallback = "") const {
             const auto found = this->attr_.find(key);
             return found == this->attr_.end() ? fallback : found->second;
+        }
+
+        /** Return a numeric attribute value, or fallback when unset or not parseable as a number. */
+        template<typename T>
+        typename std::enable_if<detail::is_numeric_attr_type<T>::value, T>::type
+        get_attr(const std::string& key, T fallback) const {
+            const auto found = this->attr_.find(key);
+            if (found == this->attr_.end()) return fallback;
+            return static_cast<T>(detail::parse_number_or(found->second, static_cast<double>(fallback)));
         }
 
         template<typename T>
@@ -3057,11 +3076,6 @@ namespace SVG {
         std::unique_ptr<Element> clone_element_impl() const override {
             return clone_as<Text>();
         }
-
-    private:
-        double numeric_attr_or(const std::string& key, double fallback) const {
-            return detail::parse_number_or(this->get_attr(key), fallback);
-        }
     };
 
     /** Native SVG title element whose content is XML-escaped when serialized. */
@@ -3205,16 +3219,16 @@ namespace SVG {
 
     inline Element::BoundingBox Text::get_bbox() const {
         if (content.empty()) {
-            const auto x = numeric_attr_or("x", 0) + numeric_attr_or("dx", 0);
-            const auto y = numeric_attr_or("y", 0) + numeric_attr_or("dy", 0);
+            const auto x = get_attr<double>("x", 0) + get_attr<double>("dx", 0);
+            const auto y = get_attr<double>("y", 0) + get_attr<double>("dy", 0);
             return include_stroke_width({ x, x, y, y });
         }
 
-        double font_size = numeric_attr_or("font-size", 16);
+        double font_size = get_attr<double>("font-size", 16);
         if (!(font_size > 0)) font_size = 16;
 
-        const double x = numeric_attr_or("x", 0) + numeric_attr_or("dx", 0);
-        const double y = numeric_attr_or("y", 0) + numeric_attr_or("dy", 0);
+        const double x = get_attr<double>("x", 0) + get_attr<double>("dx", 0);
+        const double y = get_attr<double>("y", 0) + get_attr<double>("dy", 0);
         const auto metrics = detail::TextEstimator(content, font_size, get_attr("font-weight")).estimate();
         const double width = metrics.width;
         const double height = metrics.height;
@@ -3465,7 +3479,7 @@ namespace SVG {
             const auto stroke = element.get_attr("stroke");
             if (stroke.empty() || stroke == "none") return 0;
 
-            const auto width = parse_number_or(element.get_attr("stroke-width"), 1);
+            const auto width = element.get_attr<double>("stroke-width", 1);
             return width > 0 ? width : 0;
         }
 
@@ -3541,10 +3555,10 @@ namespace SVG {
         Element::BoundingBox bbox = referenced->layout_bbox();
         if (!detail::bbox_is_measured(bbox)) return bbox;
 
-        const auto x = detail::parse_number_or(this->get_attr("x"), 0);
-        const auto y = detail::parse_number_or(this->get_attr("y"), 0);
-        const auto width = detail::parse_number_or(this->get_attr("width"), NAN);
-        const auto height = detail::parse_number_or(this->get_attr("height"), NAN);
+        const auto x = this->get_attr<double>("x", 0);
+        const auto y = this->get_attr<double>("y", 0);
+        const auto width = this->get_attr<double>("width", NAN);
+        const auto height = this->get_attr<double>("height", NAN);
         const auto viewbox = detail::parse_transform_args(referenced->get_attr("viewBox"));
         if (!std::isnan(width) && !std::isnan(height) && viewbox.size() == 4 &&
                 viewbox[2] != 0 && viewbox[3] != 0) {
@@ -3564,10 +3578,10 @@ namespace SVG {
     }
 
     inline Element::BoundingBox SVG::get_bbox() const {
-        const double x = detail::parse_number_or(this->get_attr("x"), 0);
-        const double y = detail::parse_number_or(this->get_attr("y"), 0);
-        const double width = detail::parse_number_or(this->get_attr("width"), NAN);
-        const double height = detail::parse_number_or(this->get_attr("height"), NAN);
+        const double x = this->get_attr<double>("x", 0);
+        const double y = this->get_attr<double>("y", 0);
+        const double width = this->get_attr<double>("width", NAN);
+        const double height = this->get_attr<double>("height", NAN);
 
         if (!std::isnan(width) && !std::isnan(height)) {
             return { x, x + width, y, y + height };

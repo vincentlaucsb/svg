@@ -261,6 +261,21 @@ TEST_CASE("text bbox approximates baseline text bounds", "[layout]") {
     REQUIRE(bbox.y2 == Approx(24));
 }
 
+TEST_CASE("empty text bbox collapses to positioned point", "[layout]") {
+    SVG::Text label(10, 20, "");
+    label.set_attr("dx", 3)
+        .set_attr("dy", -4)
+        .set_attr("stroke", "#111")
+        .set_attr("stroke-width", 2);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x1 == Approx(12));
+    REQUIRE(bbox.x2 == Approx(14));
+    REQUIRE(bbox.y1 == Approx(15));
+    REQUIRE(bbox.y2 == Approx(17));
+}
+
 TEST_CASE("text bbox respects middle anchor and baseline", "[layout]") {
     SVG::Text title(50, 25, "Header");
     title.set_attr("font-size", 20)

@@ -2,6 +2,17 @@
 #include "svg.hpp"
 #include "test_helpers.hpp"
 
+namespace {
+    class ClearableGroup : public SVG::Group {
+    public:
+        using SVG::Group::Group;
+
+        void clear_for_test() {
+            clear_children();
+        }
+    };
+}
+
 TEST_CASE("get_children returns descendants by tag", "[traversal]") {
     SVG::SVG root;
     auto circ_ptr = root.add_child<SVG::Circle>();
@@ -211,6 +222,23 @@ TEST_CASE("Moved subtrees register ids with their new SVG root", "[traversal]") 
     rect->id("attached");
     REQUIRE(root.get_element_by_id("detached") == nullptr);
     REQUIRE(root.get_element_by_id("attached") == rect);
+}
+
+TEST_CASE("Clearing children unregisters descendant ids", "[traversal]") {
+    SVG::SVG root;
+    auto* group = root.add_child<ClearableGroup>();
+    group->add_child<SVG::Rect>();
+    auto* child = group->add_child<SVG::Group>("child");
+    child->add_child<SVG::Rect>("leaf");
+
+    REQUIRE(root.get_element_by_id("child") == child);
+    REQUIRE(root.get_element_by_id("leaf") != nullptr);
+
+    group->clear_for_test();
+
+    REQUIRE(group->get_immediate_children<SVG::Element>().empty());
+    REQUIRE(root.get_element_by_id("child") == nullptr);
+    REQUIRE(root.get_element_by_id("leaf") == nullptr);
 }
 
 TEST_CASE("get_elements_by_class matches tokenized classes", "[traversal]") {

@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="examples/svg-open-sign.svg" alt="SVG for C++" width="680">
+  <img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign.svg" alt="SVG for C++" width="680">
   <br>
-  <a href="examples/open_sign.cpp">See the C++ code for this logo</a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/open_sign.cpp">See the C++ code for this logo</a>
   <br>
-  <a href="examples/svg-open-sign.svg"><img src="examples/svg-open-sign-swatch.svg" alt="pink logo" width="64"></a>
-  <a href="examples/svg-open-sign-green.svg"><img src="examples/svg-open-sign-green-swatch.svg" alt="green logo" width="64"></a>
-  <a href="examples/svg-open-sign-blue.svg"><img src="examples/svg-open-sign-blue-swatch.svg" alt="blue logo" width="64"></a>
-  <a href="examples/svg-open-sign-red.svg"><img src="examples/svg-open-sign-red-swatch.svg" alt="red logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-swatch.svg" alt="pink logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign-green.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-green-swatch.svg" alt="green logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign-blue.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-blue-swatch.svg" alt="blue logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign-red.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-red-swatch.svg" alt="red logo" width="64"></a>
 </p>
 
 # SVG for C++

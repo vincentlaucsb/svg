@@ -74,6 +74,20 @@ TEST_CASE("set_attrs applies multiple attributes and normalizes class values", "
     REQUIRE(rect.attrs().size() == 3);
 }
 
+TEST_CASE("get_attr supports string and numeric fallbacks", "[attributes]") {
+    SVG::Rect rect;
+    rect.set_attr("x", "12.5px")
+        .set_attr("data-count", "7")
+        .set_attr("data-bad-number", "calc(100% - 2px)");
+
+    REQUIRE(rect.get_attr("x", "0") == "12.5px");
+    REQUIRE(rect.get_attr("missing", "fallback") == "fallback");
+    REQUIRE(rect.get_attr<double>("x", 0) == Approx(12.5));
+    REQUIRE(rect.get_attr<int>("data-count", 0) == 7);
+    REQUIRE(rect.get_attr<double>("missing-number", 4.5) == Approx(4.5));
+    REQUIRE(rect.get_attr<double>("data-bad-number", 2.5) == Approx(2.5));
+}
+
 TEST_CASE("TransformList appends transform functions in order", "[transform-list]") {
     SVG::Text label(10, 20, "Workout");
 
