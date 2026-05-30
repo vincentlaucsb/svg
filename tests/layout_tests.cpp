@@ -540,6 +540,51 @@ TEST_CASE("align_to defaults to center anchor", "[layout]") {
     REQUIRE(legend.get_attr("transform") == "translate(12.0 40.0)");
 }
 
+TEST_CASE("align_to supports start and end anchors", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group x_start;
+    SVG::Group x_end;
+    SVG::Group y_start;
+    SVG::Group y_end;
+    x_start.layout_bbox({ 0, 20, 0, 10 });
+    x_end.layout_bbox({ 0, 20, 0, 10 });
+    y_start.layout_bbox({ 0, 20, 0, 10 });
+    y_end.layout_bbox({ 0, 20, 0, 10 });
+
+    x_start.align_to(plot, SVG::Axis::X, SVG::Anchor::Start);
+    x_end.align_to(plot, SVG::Axis::X, SVG::Anchor::End);
+    y_start.align_to(plot, SVG::Axis::Y, SVG::Anchor::Start);
+    y_end.align_to(plot, SVG::Axis::Y, SVG::Anchor::End);
+
+    REQUIRE(x_start.get_attr("transform") == "translate(10.0 0.0)");
+    REQUIRE(x_end.get_attr("transform") == "translate(90.0 0.0)");
+    REQUIRE(y_start.get_attr("transform") == "translate(0.0 20.0)");
+    REQUIRE(y_end.get_attr("transform") == "translate(0.0 60.0)");
+}
+
+TEST_CASE("align_to rejects invalid axis or anchor", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group legend;
+    legend.layout_bbox({ 0, 20, 0, 10 });
+
+    REQUIRE_THROWS_AS(
+        legend.align_to(plot, static_cast<SVG::Axis>(99)),
+        std::invalid_argument);
+    REQUIRE_THROWS_AS(
+        legend.align_to(plot, SVG::Axis::X, static_cast<SVG::Anchor>(0)),
+        std::invalid_argument);
+}
+
+TEST_CASE("align_to rejects unmeasurable bounds", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Rect label(0, 0, 20, 10);
+    BadBBoxElement source;
+    BadBBoxElement target;
+
+    REQUIRE_THROWS_AS(source.align_to(plot, SVG::Axis::X), std::logic_error);
+    REQUIRE_THROWS_AS(label.align_to(target, SVG::Axis::Y), std::logic_error);
+}
+
 TEST_CASE("merge combines SVG documents horizontally", "[layout]") {
     auto s1 = two_circles(200, 200, 200);
     auto s2 = two_circles(200, 200, 200);

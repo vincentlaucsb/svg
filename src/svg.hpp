@@ -45,6 +45,7 @@
 #include <math.h>    // NAN
 #include <map>
 #include <deque>
+#include <set>
 #include <vector>
 #include <string>
 #include <sstream> // stringstream
@@ -1393,14 +1394,14 @@ namespace SVG {
                 }
 
                 this->names_[key] = normalized_name;
-                this->used_names_[normalized_name] = key;
+                this->used_names_.insert(normalized_name);
             }
 
         private:
             /** Enum-to-name mapping for this helper. */
             std::map<T, std::string> names_;
-            /** Reverse map used to reject duplicate output names. */
-            std::map<std::string, T> used_names_;
+            /** Output names already assigned to an enum key. */
+            std::set<std::string> used_names_;
         };
     }
     /** @endcond */
@@ -3662,13 +3663,17 @@ namespace SVG {
                                       Axis axis,
                                       Anchor anchor,
                                       Point offset) {
+        if (axis != Axis::X && axis != Axis::Y) {
+            throw std::invalid_argument("align_to requires a valid axis");
+        }
+        if (anchor != Anchor::Start && anchor != Anchor::Center && anchor != Anchor::End) {
+            throw std::invalid_argument("align_to requires a valid anchor");
+        }
+
         const auto source_box = this->layout_bbox();
         const auto target_box = target.layout_bbox();
         if (!detail::bbox_is_measured(source_box) || !detail::bbox_is_measured(target_box)) {
             throw std::logic_error("align_to requires measured layout bounds");
-        }
-        if (anchor != Anchor::Start && anchor != Anchor::Center && anchor != Anchor::End) {
-            throw std::invalid_argument("align_to requires a valid anchor");
         }
 
         double dx = offset.first;

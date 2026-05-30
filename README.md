@@ -126,6 +126,8 @@ root.add_child<SVG::Line>(
 
 ### Class Lists and Queries
 
+Attribute names are stored and looked up case-sensitively, matching SVG/XML behavior. Use the exact SVG spelling for mixed-case names such as `viewBox`; `viewbox` is a separate attribute and will not be used by SVG viewers as a substitute.
+
 `class_list()` treats the `class` attribute as a normalized token list, so repeated whitespace and duplicate class tokens are cleaned up. Use `get_elements_by_class()` when you want token-aware matches instead of substring checks.
 
 ```cpp

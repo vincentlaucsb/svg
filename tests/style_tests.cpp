@@ -255,4 +255,10 @@ TEST_CASE("Typed CSS classes reject ambiguous or invalid names", "[style]") {
     REQUIRE_THROWS_AS(SVG::Classes<PlotClass>({
         { PlotClass::axis_line, "axis line" }
     }), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Classes<PlotClass>({
+        { PlotClass::axis_line, "" }
+    }), std::invalid_argument);
+    REQUIRE_THROWS_AS(SVG::Classes<PlotClass>({
+        { PlotClass::axis_line, "." }
+    }), std::invalid_argument);
 }
