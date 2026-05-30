@@ -353,6 +353,33 @@ TEST_CASE("text bbox estimates emoji as wide symbols", "[layout]") {
     REQUIRE(bbox.x2 - bbox.x1 == Approx(11.4));
 }
 
+TEST_CASE("multiline text bbox uses longest line width", "[layout]") {
+    SVG::Text label(0, 0, "Hi\nMMMM");
+    label.set_attr("font-size", 10);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x2 - bbox.x1 == Approx(37.2));
+    REQUIRE(bbox.y1 == Approx(-10.2));
+    REQUIRE(bbox.y2 == Approx(17.2));
+    REQUIRE(bbox.y2 - bbox.y1 == Approx(27.4));
+}
+
+TEST_CASE("multiline text bbox handles CRLF and blank lines", "[layout]") {
+    SVG::Text crlf(0, 0, "OK\r\nM");
+    SVG::Text blank_line(0, 0, "W\n\nW");
+    crlf.set_attr("font-size", 10);
+    blank_line.set_attr("font-size", 10);
+
+    const auto crlf_bbox = crlf.get_bbox();
+    const auto blank_line_bbox = blank_line.get_bbox();
+
+    REQUIRE(crlf_bbox.x2 - crlf_bbox.x1 == Approx(14.8));
+    REQUIRE(crlf_bbox.y2 - crlf_bbox.y1 == Approx(27.4));
+    REQUIRE(blank_line_bbox.x2 - blank_line_bbox.x1 == Approx(9.6));
+    REQUIRE(blank_line_bbox.y2 - blank_line_bbox.y1 == Approx(40.6));
+}
+
 TEST_CASE("autoscale includes text bounds", "[layout]") {
     SVG::SVG root;
     root.add_child<SVG::Rect>(0, 0, 100, 50);

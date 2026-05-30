@@ -208,6 +208,7 @@ TEST_CASE("Typed CSS variables reject ambiguous mappings and bad formats", "[sty
     REQUIRE_THROWS_AS(vars.format("calc({0} * {1})", PlotVar::axis), std::invalid_argument);
     REQUIRE_THROWS_AS(vars.format("calc({0})", PlotVar::axis, PlotVar::text_size), std::invalid_argument);
     REQUIRE_THROWS_AS(vars.format("calc({0)", PlotVar::axis), std::invalid_argument);
+    REQUIRE_THROWS_AS(vars.format("calc({0})}", PlotVar::axis), std::invalid_argument);
 }
 
 TEST_CASE("Typed CSS classes produce selectors and class attributes", "[style]") {
