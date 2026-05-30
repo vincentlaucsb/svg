@@ -97,6 +97,16 @@ TEST_CASE("Color helpers preserve palette relationships", "[style]") {
     REQUIRE(static_cast<std::string>(SVG::Color::black()) == "#000000");
 }
 
+TEST_CASE("HSL colors cover hue sectors and wrapping", "[style]") {
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(-60, 100, 50)) == "#ff00ff");
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(30, 100, 50)) == "#ff8000");
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(90, 100, 50)) == "#80ff00");
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(150, 100, 50)) == "#00ff80");
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(210, 100, 50)) == "#0080ff");
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(270, 100, 50)) == "#8000ff");
+    REQUIRE(static_cast<std::string>(SVG::Color::hsl(390, 100, 50)) == "#ff8000");
+}
+
 TEST_CASE("Color helpers reject invalid values", "[style]") {
     REQUIRE_THROWS_AS(SVG::Color::rgb(-1, 0, 0), std::invalid_argument);
     REQUIRE_THROWS_AS(SVG::Color::rgb(0, 256, 0), std::invalid_argument);
