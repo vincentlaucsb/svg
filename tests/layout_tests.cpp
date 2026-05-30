@@ -142,7 +142,7 @@ TEST_CASE("rotate_about_bbox rotates text around bottom-right bounds", "[layout]
 
     label.transform().rotate_about_bbox(-45, SVG::Anchor::End, SVG::Anchor::End);
 
-    REQUIRE(label.get_attr("transform").find("rotate(-45.0 28.0 24.0)") != std::string::npos);
+    REQUIRE(label.get_attr("transform").find("rotate(-45.0 32.0 24.0)") != std::string::npos);
 }
 
 TEST_CASE("autoscale includes text rotated around its measured bbox", "[layout]") {
@@ -153,7 +153,7 @@ TEST_CASE("autoscale includes text rotated around its measured bbox", "[layout]"
 
     root.autoscale(SVG::NO_MARGINS);
 
-    REQUIRE(root.get_attr("viewBox") == "16.0 24.0 12.0 18.0");
+    REQUIRE(root.get_attr("viewBox") == "17.8 24.0 14.2 22.0");
 }
 
 TEST_CASE("rotate_about_bbox supports rect bounds", "[layout]") {
@@ -256,9 +256,24 @@ TEST_CASE("text bbox approximates baseline text bounds", "[layout]") {
     const auto bbox = label.get_bbox();
 
     REQUIRE(bbox.x1 == Approx(10));
-    REQUIRE(bbox.x2 == Approx(28));
-    REQUIRE(bbox.y1 == Approx(12));
+    REQUIRE(bbox.x2 == Approx(32));
+    REQUIRE(bbox.y1 == Approx(9.8));
     REQUIRE(bbox.y2 == Approx(24));
+}
+
+TEST_CASE("empty text bbox collapses to positioned point", "[layout]") {
+    SVG::Text label(10, 20, "");
+    label.set_attr("dx", 3)
+        .set_attr("dy", -4)
+        .set_attr("stroke", "#111")
+        .set_attr("stroke-width", 2);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x1 == Approx(12));
+    REQUIRE(bbox.x2 == Approx(14));
+    REQUIRE(bbox.y1 == Approx(15));
+    REQUIRE(bbox.y2 == Approx(17));
 }
 
 TEST_CASE("text bbox respects middle anchor and baseline", "[layout]") {
@@ -269,10 +284,10 @@ TEST_CASE("text bbox respects middle anchor and baseline", "[layout]") {
 
     const auto bbox = title.get_bbox();
 
-    REQUIRE(bbox.x1 == Approx(14));
-    REQUIRE(bbox.x2 == Approx(86));
-    REQUIRE(bbox.y1 == Approx(13));
-    REQUIRE(bbox.y2 == Approx(37));
+    REQUIRE(bbox.x1 == Approx(11.4));
+    REQUIRE(bbox.x2 == Approx(88.6));
+    REQUIRE(bbox.y1 == Approx(10.8));
+    REQUIRE(bbox.y2 == Approx(39.2));
 }
 
 TEST_CASE("text bbox falls back for non-numeric font sizes", "[layout]") {
@@ -281,8 +296,103 @@ TEST_CASE("text bbox falls back for non-numeric font sizes", "[layout]") {
 
     const auto bbox = label.get_bbox();
 
-    REQUIRE(bbox.x2 - bbox.x1 == Approx(19.2));
-    REQUIRE(bbox.y2 - bbox.y1 == Approx(19.2));
+    REQUIRE(bbox.x2 - bbox.x1 == Approx(23.68));
+    REQUIRE(bbox.y2 - bbox.y1 == Approx(22.72));
+}
+
+TEST_CASE("text bbox distinguishes narrow and wide ASCII advances", "[layout]") {
+    SVG::Text narrow(0, 0, "ill...");
+    SVG::Text wide(0, 0, "MWm");
+    narrow.set_attr("font-size", 10);
+    wide.set_attr("font-size", 10);
+
+    const auto narrow_bbox = narrow.get_bbox();
+    const auto wide_bbox = wide.get_bbox();
+
+    REQUIRE(narrow_bbox.x2 - narrow_bbox.x1 == Approx(22.6));
+    REQUIRE(wide_bbox.x2 - wide_bbox.x1 == Approx(28));
+}
+
+TEST_CASE("large bold text bbox is padded conservatively", "[layout]") {
+    SVG::Text normal(0, 100, "MWM Title");
+    SVG::Text bold(0, 100, "MWM Title");
+    normal.set_attr("font-size", 100);
+    bold.set_attr("font-size", 100)
+        .set_attr("font-weight", "bold");
+
+    const auto normal_bbox = normal.get_bbox();
+    const auto bold_bbox = bold.get_bbox();
+
+    REQUIRE(bold_bbox.x2 - bold_bbox.x1 > normal_bbox.x2 - normal_bbox.x1);
+    REQUIRE(bold_bbox.y2 - bold_bbox.y1 > normal_bbox.y2 - normal_bbox.y1);
+    REQUIRE(bold_bbox.y1 < 0);
+    REQUIRE(bold_bbox.y2 > 140);
+}
+
+TEST_CASE("text bbox decodes UTF-8 accented text by code point", "[layout]") {
+    SVG::Text label(0, 0, std::string("caf\xc3\xa9"));
+    label.set_attr("font-size", 10);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x2 - bbox.x1 == Approx(25.6));
+}
+
+TEST_CASE("text bbox gives combining marks zero advance", "[layout]") {
+    SVG::Text plain(0, 0, "e");
+    SVG::Text combining(0, 0, std::string("e\xcc\x81"));
+    plain.set_attr("font-size", 10);
+    combining.set_attr("font-size", 10);
+
+    const auto plain_bbox = plain.get_bbox();
+    const auto combining_bbox = combining.get_bbox();
+
+    REQUIRE(combining_bbox.x2 - combining_bbox.x1 == Approx(plain_bbox.x2 - plain_bbox.x1));
+}
+
+TEST_CASE("text bbox estimates CJK characters as full-width", "[layout]") {
+    SVG::Text label(0, 0, std::string("\xe6\x96\x87\xe6\x9c\xac"));
+    label.set_attr("font-size", 10);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x2 - bbox.x1 == Approx(21.4));
+}
+
+TEST_CASE("text bbox estimates emoji as wide symbols", "[layout]") {
+    SVG::Text label(0, 0, std::string("\xf0\x9f\x98\x80"));
+    label.set_attr("font-size", 10);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x2 - bbox.x1 == Approx(11.4));
+}
+
+TEST_CASE("multiline text bbox uses longest line width", "[layout]") {
+    SVG::Text label(0, 0, "Hi\nMMMM");
+    label.set_attr("font-size", 10);
+
+    const auto bbox = label.get_bbox();
+
+    REQUIRE(bbox.x2 - bbox.x1 == Approx(37.2));
+    REQUIRE(bbox.y1 == Approx(-10.2));
+    REQUIRE(bbox.y2 == Approx(17.2));
+    REQUIRE(bbox.y2 - bbox.y1 == Approx(27.4));
+}
+
+TEST_CASE("multiline text bbox handles CRLF and blank lines", "[layout]") {
+    SVG::Text crlf(0, 0, "OK\r\nM");
+    SVG::Text blank_line(0, 0, "W\n\nW");
+    crlf.set_attr("font-size", 10);
+    blank_line.set_attr("font-size", 10);
+
+    const auto crlf_bbox = crlf.get_bbox();
+    const auto blank_line_bbox = blank_line.get_bbox();
+
+    REQUIRE(crlf_bbox.x2 - crlf_bbox.x1 == Approx(14.8));
+    REQUIRE(crlf_bbox.y2 - crlf_bbox.y1 == Approx(27.4));
+    REQUIRE(blank_line_bbox.x2 - blank_line_bbox.x1 == Approx(9.6));
+    REQUIRE(blank_line_bbox.y2 - blank_line_bbox.y1 == Approx(40.6));
 }
 
 TEST_CASE("autoscale includes text bounds", "[layout]") {
@@ -294,7 +404,7 @@ TEST_CASE("autoscale includes text bounds", "[layout]") {
 
     root.autoscale(SVG::NO_MARGINS);
 
-    REQUIRE(root.get_attr("viewBox") == "-10.0 -22.0 120.0 72.0");
+    REQUIRE(root.get_attr("viewBox") == "-13.4 -26.4 126.8 76.4");
 }
 
 TEST_CASE("explicit layout bbox lets autoscale use caller measurements", "[layout]") {
@@ -309,6 +419,33 @@ TEST_CASE("explicit layout bbox lets autoscale use caller measurements", "[layou
     REQUIRE(bad_bbox.x1 != bad_bbox.x1);
     REQUIRE(measured->layout_bbox().x1 == 10);
     REQUIRE(root.get_attr("viewBox") == "10.0 20.0 30.0 40.0");
+}
+
+TEST_CASE("explicit text layout bbox wins over measured padding", "[layout]") {
+    SVG::SVG root;
+    auto* label = root.add_child<SVG::Text>(0, 0, "Padded");
+    label->bbox_padding(100)
+        .layout_bbox({ 1, 2, 3, 4 });
+
+    root.autoscale(SVG::NO_MARGINS);
+
+    REQUIRE(label->layout_bbox().x1 == 1);
+    REQUIRE(label->layout_bbox().x2 == 2);
+    REQUIRE(root.get_attr("viewBox") == "1.0 3.0 1.0 1.0");
+}
+
+TEST_CASE("bbox padding inflates measured layout bounds", "[layout]") {
+    SVG::Text label(10, 20, "OK");
+    label.set_attr("font-size", 10);
+    label.bbox_padding({ 1, 2, 3, 4 });
+
+    const auto geometry = label.get_bbox();
+    const auto layout = label.layout_bbox();
+
+    REQUIRE(layout.x1 == Approx(geometry.x1 - 1));
+    REQUIRE(layout.x2 == Approx(geometry.x2 + 2));
+    REQUIRE(layout.y1 == Approx(geometry.y1 - 3));
+    REQUIRE(layout.y2 == Approx(geometry.y2 + 4));
 }
 
 TEST_CASE("clearing layout bbox restores built-in autoscale measurement", "[layout]") {
@@ -416,6 +553,51 @@ TEST_CASE("align_to defaults to center anchor", "[layout]") {
     legend.align_to(plot, SVG::Axis::Y, { 12, 0 });
 
     REQUIRE(legend.get_attr("transform") == "translate(12.0 40.0)");
+}
+
+TEST_CASE("align_to supports start and end anchors", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group x_start;
+    SVG::Group x_end;
+    SVG::Group y_start;
+    SVG::Group y_end;
+    x_start.layout_bbox({ 0, 20, 0, 10 });
+    x_end.layout_bbox({ 0, 20, 0, 10 });
+    y_start.layout_bbox({ 0, 20, 0, 10 });
+    y_end.layout_bbox({ 0, 20, 0, 10 });
+
+    x_start.align_to(plot, SVG::Axis::X, SVG::Anchor::Start);
+    x_end.align_to(plot, SVG::Axis::X, SVG::Anchor::End);
+    y_start.align_to(plot, SVG::Axis::Y, SVG::Anchor::Start);
+    y_end.align_to(plot, SVG::Axis::Y, SVG::Anchor::End);
+
+    REQUIRE(x_start.get_attr("transform") == "translate(10.0 0.0)");
+    REQUIRE(x_end.get_attr("transform") == "translate(90.0 0.0)");
+    REQUIRE(y_start.get_attr("transform") == "translate(0.0 20.0)");
+    REQUIRE(y_end.get_attr("transform") == "translate(0.0 60.0)");
+}
+
+TEST_CASE("align_to rejects invalid axis or anchor", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Group legend;
+    legend.layout_bbox({ 0, 20, 0, 10 });
+
+    REQUIRE_THROWS_AS(
+        legend.align_to(plot, static_cast<SVG::Axis>(99)),
+        std::invalid_argument);
+    REQUIRE_THROWS_AS(
+        legend.align_to(plot, SVG::Axis::X, static_cast<SVG::Anchor>(0)),
+        std::invalid_argument);
+}
+
+TEST_CASE("align_to rejects unmeasurable bounds", "[layout]") {
+    SVG::Rect plot(10, 20, 100, 50);
+    SVG::Rect label(0, 0, 20, 10);
+    BadBBoxElement source;
+    BadBBoxElement target;
+
+    REQUIRE_THROWS_AS(source.align_to(plot, SVG::Axis::X), std::logic_error);
+    REQUIRE_THROWS_AS(label.align_to(target, SVG::Axis::Y), std::logic_error);
 }
 
 TEST_CASE("merge combines SVG documents horizontally", "[layout]") {

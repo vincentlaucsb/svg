@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="examples/svg-open-sign.svg" alt="SVG for C++" width="680">
+  <img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign.svg" alt="SVG for C++" width="680">
   <br>
-  <a href="examples/open_sign.cpp">See the C++ code for this logo</a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/open_sign.cpp">See the C++ code for this logo</a>
   <br>
-  <a href="examples/svg-open-sign.svg"><img src="examples/svg-open-sign-swatch.svg" alt="pink logo" width="64"></a>
-  <a href="examples/svg-open-sign-green.svg"><img src="examples/svg-open-sign-green-swatch.svg" alt="green logo" width="64"></a>
-  <a href="examples/svg-open-sign-blue.svg"><img src="examples/svg-open-sign-blue-swatch.svg" alt="blue logo" width="64"></a>
-  <a href="examples/svg-open-sign-red.svg"><img src="examples/svg-open-sign-red-swatch.svg" alt="red logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-swatch.svg" alt="pink logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign-green.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-green-swatch.svg" alt="green logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign-blue.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-blue-swatch.svg" alt="blue logo" width="64"></a>
+  <a href="https://github.com/vincentlaucsb/svg/blob/master/examples/svg-open-sign-red.svg"><img src="https://raw.githubusercontent.com/vincentlaucsb/svg/master/examples/svg-open-sign-red-swatch.svg" alt="red logo" width="64"></a>
 </p>
 
 # SVG for C++
@@ -126,6 +126,8 @@ root.add_child<SVG::Line>(
 
 ### Class Lists and Queries
 
+Attribute names are stored and looked up case-sensitively, matching SVG/XML behavior. Use the exact SVG spelling for mixed-case names such as `viewBox`; `viewbox` is a separate attribute and will not be used by SVG viewers as a substitute.
+
 `class_list()` treats the `class` attribute as a normalized token list, so repeated whitespace and duplicate class tokens are cleaned up. Use `get_elements_by_class()` when you want token-aware matches instead of substring checks.
 
 ```cpp
@@ -208,6 +210,12 @@ When an element uses SVG features the library cannot measure well enough, provid
 auto* label = root.add_child<SVG::Text>(0, 0, user_supplied_label);
 label->layout_bbox({ -4, 96, -18, 6 });
 root.autoscale();
+```
+
+Text layout bounds are estimates, not exact font shaping or browser measurements. The built-in estimator is UTF-8 aware, treats combining marks as zero-width, and uses conservative advances for ASCII, CJK/full-width text, emoji, and bold text. If an element only needs a little extra layout space, use `bbox_padding()`; an explicit `layout_bbox()` still takes precedence.
+
+```cpp
+title->bbox_padding({ 2, 2, 4, 4 });
 ```
 
 Use `snap_to()` to position measured elements against each other with SVG transforms. Passing only `RelativeAlignment` uses `Anchor::Center`, so offsets do not require spelling out the center anchor. Combine the two enums with `|` when you need start or end alignment along the shared edge. Use `align_to()` when elements should share an axis without becoming neighbors.
