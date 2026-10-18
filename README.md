@@ -239,3 +239,7 @@ label->transform().rotate_about_bbox(-45, SVG::Anchor::End, SVG::Anchor::End);
 
 ## Simple Animations
 This package supports creating basic animations via CSS keyframes via the frame_animate() function.
+
+## License
+
+SVG for C++ is released under the [MIT License](LICENSE). Copyright (c) 2018-2026 Vincent La.
