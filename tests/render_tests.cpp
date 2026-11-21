@@ -44,6 +44,28 @@ TEST_CASE("Nested elements serialize with proper indentation", "[render]") {
     REQUIRE(std::string(root) == correct);
 }
 
+TEST_CASE("Nested serializers preserve overrides, empty output and escaping after cloning", "[render]") {
+    class CustomUse : public SVG::Use {
+        std::string svg_to_string(std::size_t level) const override {
+            return std::string(level, '\t') + "<custom />";
+        }
+        std::unique_ptr<SVG::Element> clone_element_impl() const override {
+            return clone_as<CustomUse>();
+        }
+    };
+
+    SVG::Group root;
+    auto* group = root.add_child<SVG::Group>();
+    group->add_child<CustomUse>();
+    group->add_child<SVG::SVG::Style>();
+    group->add_child<SVG::Title>("&<>'\"")->set_attr("data", "<&");
+    const std::string expected =
+        "<g>\n\t<g>\n\t\t<custom />\n"
+        "\t\t<title data=\"&lt;&amp;\">&amp;&lt;&gt;&apos;&quot;</title>\n\t</g>\n</g>";
+    REQUIRE(std::string(root) == expected);
+    REQUIRE(std::string(*root.clone_element()) == expected);
+}
+
 TEST_CASE("add_child applies trailing Attrs after construction", "[render]") {
     SVG::SVG root;
     auto* group = root.add_child<SVG::Group>(SVG::Attrs{{ "class", "plot marks" }});

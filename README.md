@@ -240,6 +240,12 @@ label->transform().rotate_about_bbox(-45, SVG::Anchor::End, SVG::Anchor::End);
 ## Simple Animations
 This package supports creating basic animations via CSS keyframes via the frame_animate() function.
 
+## Releasing
+
+Open a PR from a branch in this repository into `master`. Update both the CMake project version and the version banner in `src/svg.hpp`. Title the PR `Release X.Y.Z` or `Release X.Y.Z: Short description` and write the user-facing release notes in the PR body.
+
+On merge, the Release workflow checks the CMake version, tags the merged commit as `X.Y.Z`, and uses the PR title and body for the GitHub Release.
+
 ## License
 
 SVG for C++ is released under the [MIT License](LICENSE). Copyright (c) 2018-2026 Vincent La.

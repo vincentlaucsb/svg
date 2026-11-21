@@ -5,7 +5,7 @@
    ___) | \ V /| |_| |
   |____/   \_/  \____|
 
-  SVG for C++ v0.5.0
+  SVG for C++ v0.5.1
 
   Copyright (c) 2018-2026 Vincent La
   SPDX-License-Identifier: MIT
@@ -1165,31 +1165,30 @@ namespace SVG {
         return static_cast<std::string>(color);
     }
 
+    namespace detail {
+        inline void append_escaped_xml(std::string& out, const std::string& text) {
+            size_t start = 0;
+            for (size_t i = 0; i < text.size(); ++i) {
+                const char* entity;
+                switch (text[i]) {
+                    case '&': entity = "&amp;"; break;
+                    case '<': entity = "&lt;"; break;
+                    case '>': entity = "&gt;"; break;
+                    case '"': entity = "&quot;"; break;
+                    case '\'': entity = "&apos;"; break;
+                    default: continue;
+                }
+                out.append(text, start, i - start);
+                out += entity;
+                start = i + 1;
+            }
+            out.append(text, start, text.size() - start);
+        }
+    }
+
     inline std::string escape_xml(const std::string& text) {
         std::string out;
-        out.reserve(text.size());
-        for (const char ch : text) {
-            switch (ch) {
-                case '&':
-                    out += "&amp;";
-                    break;
-                case '<':
-                    out += "&lt;";
-                    break;
-                case '>':
-                    out += "&gt;";
-                    break;
-                case '"':
-                    out += "&quot;";
-                    break;
-                case '\'':
-                    out += "&apos;";
-                    break;
-                default:
-                    out.push_back(ch);
-                    break;
-            }
-        }
+        detail::append_escaped_xml(out, text);
         return out;
     }
 
@@ -1716,7 +1715,7 @@ namespace SVG {
             /** Add an SVG element as a child and return a pointer to the element added */
             SVG_TYPE_CHECK;
             auto child = detail::make_child<T>(std::forward<Args>(args)...);
-            return static_cast<T*>(this->insert_child(std::move(child), this->children.end()));
+            return this->insert_new_child(std::move(child), this->children.end());
         }
 
         template<typename T>
@@ -1724,7 +1723,7 @@ namespace SVG {
             /** Move an SVG element into this container */
             SVG_TYPE_CHECK;
             auto child = detail::make_unique<T>(std::move(node));
-            this->insert_child(std::move(child), this->children.end());
+            this->insert_new_child(std::move(child), this->children.end());
             return *this;
         }
 
@@ -1889,7 +1888,9 @@ namespace SVG {
         std::unique_ptr<T> clone_as() const {
             static_assert(std::is_copy_constructible<T>::value,
                           "Cloneable SVG element subclasses must be copy constructible.");
-            return detail::make_unique<T>(static_cast<const T&>(*this));
+            auto copy = detail::make_unique<T>(static_cast<const T&>(*this));
+            copy->plain_xml_ = uses_plain_xml<T>();
+            return copy;
         }
 
         void set_attr_value(const std::string& key, const std::string& value) override;
@@ -1902,6 +1903,12 @@ namespace SVG {
         void register_own_id();
         void unregister_own_id();
         void clear_children();
+
+        template<class T>
+        T* insert_new_child(std::unique_ptr<T> child, ChildIterator position) {
+            child->plain_xml_ = uses_plain_xml<T>();
+            return static_cast<T*>(insert_child(std::move(child), position));
+        }
 
         Element* insert_child(std::unique_ptr<Element> child, ChildIterator position) {
             child->parent_ = this;
@@ -1936,6 +1943,9 @@ namespace SVG {
         }
 
     private:
+        template<class T> static bool uses_plain_xml();
+        void append_plain_xml(std::string& out, size_t level) const;
+        bool plain_xml_ = false;
         Element* parent_ = nullptr;
         SVG* owner_ = nullptr;
         std::string indexed_id_;
@@ -2746,8 +2756,7 @@ namespace SVG {
             if (this->defs_) return this->defs_;
 
             auto child = detail::make_child<T>(std::forward<Args>(args)...);
-            auto* inserted = static_cast<T*>(
-                this->insert_child(std::move(child), this->defs_insert_position()));
+            auto* inserted = this->insert_new_child(std::move(child), this->defs_insert_position());
             this->defs_ = inserted;
             return inserted;
         }
@@ -3310,47 +3319,76 @@ namespace SVG {
         return std::make_pair(x_pos, y_pos);
     }
 
-    inline std::string Element::svg_to_string(const size_t indent_level) const {
-        /** Return the string representation of an SVG element
-         *
-         *  @param[out] indent_level The current level of indentation
-         */
-         
-        auto indent = std::string(indent_level, '\t');
-        std::string ret = indent + "<" + tag();
-
-        // Set attributes
-        for (auto& pair: attrs())
-            ret += " " + pair.first + "=" + "\"" + escape_xml(pair.second) + "\"";
-
-        if (!this->children.empty()) {
-            ret += ">\n";
-
-            // Recursively get strings for child elements
-            for (auto& child : children) {
-                // Avoid adding empty strings
-                auto str = child->svg_to_string(indent_level + 1);
-                if (str.size()) ret += str +"\n";
+    namespace detail {
+        inline void append_open_tag(std::string& out, size_t level, const std::string& tag,
+                                    const SVGAttrib& attrs) {
+            out.append(level, '\t');
+            out += '<';
+            out += tag;
+            for (const auto& pair : attrs) {
+                out += ' ';
+                out += pair.first;
+                out += "=\"";
+                append_escaped_xml(out, pair.second);
+                out += '"';
             }
-
-            return ret += indent + "</" + tag() + ">";
         }
 
-        return ret += " />";
-    }
-
-    namespace detail {
         /** Shared serializer for elements whose children are escaped text content. */
         inline std::string text_content_element_to_string(const Element& element,
                                                           const std::string& tag,
                                                           const std::string& content,
                                                           const size_t indent_level) {
-            auto indent = std::string(indent_level, '\t');
-            std::string ret = indent + "<" + tag;
-            for (auto& pair: element.attrs())
-                ret += " " + pair.first + "=" + "\"" + escape_xml(pair.second) + "\"";
-            return ret += ">" + escape_xml(content) + "</" + tag + ">";
+            std::string out;
+            append_open_tag(out, indent_level, tag, element.attrs());
+            out += '>';
+            append_escaped_xml(out, content);
+            out += "</";
+            out += tag;
+            out += '>';
+            return out;
         }
+    }
+
+    template<class T>
+    inline bool Element::uses_plain_xml() {
+        // Only exact built-in types with ordinary tag serialization can skip virtual
+        // svg_to_string(). Subclasses can override it even when they inherit kind().
+        return std::is_same<T, SVG>::value || std::is_same<T, Group>::value ||
+               std::is_same<T, Use>::value || std::is_same<T, Path>::value ||
+               std::is_same<T, Line>::value || std::is_same<T, Rect>::value ||
+               std::is_same<T, Circle>::value || std::is_same<T, Polygon>::value ||
+               std::is_same<T, Defs>::value || std::is_same<T, Symbol>::value ||
+               std::is_same<T, LinearGradient>::value || std::is_same<T, RadialGradient>::value ||
+               std::is_same<T, detail::Stop>::value;
+    }
+
+    inline void Element::append_plain_xml(std::string& out, size_t level) const {
+        const auto name = tag();
+        detail::append_open_tag(out, level, name, attrs());
+        if (children.empty()) {
+            out += " />";
+            return;
+        }
+        out += ">\n";
+        for (const auto& child : children) {
+            const auto start = out.size();
+            if (child->plain_xml_)
+                child->append_plain_xml(out, level + 1);
+            else
+                out += child->svg_to_string(level + 1);
+            if (out.size() != start) out += '\n';
+        }
+        out.append(level, '\t');
+        out += "</";
+        out += name;
+        out += '>';
+    }
+
+    inline std::string Element::svg_to_string(size_t level) const {
+        std::string out;
+        append_plain_xml(out, level);
+        return out;
     }
 
     inline std::string to_string(const std::map<std::string, AttributeMap>& css, const size_t indent_level) {
