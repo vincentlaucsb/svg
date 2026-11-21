@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  pull_request:
+    branches: [master]
+    types: [closed]
+
+jobs:
+  publish:
+    if: >-
+      github.event.pull_request.merged &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.title, 'Release ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: release-pr-${{ github.event.pull_request.number }}
+    steps:
+      - name: Create release at the merged commit
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const match = /^Release (\d+\.\d+\.\d+)(?:: .+)?$/.exec(pr.title);
+            if (!match || !pr.body?.trim()) {
+              throw new Error("Expected a 'Release X.Y.Z' title and release notes in the PR body.");
+            }
+            const tag = match[1];
+            const sha = pr.merge_commit_sha;
+            const repo = context.repo;
+            const { data: file } = await github.rest.repos.getContent({ ...repo, path: "CMakeLists.txt", ref: sha });
+            const cmake = Buffer.from(file.content, "base64").toString("utf8");
+            if (/^project\(SVG VERSION (\d+\.\d+\.\d+)\b/m.exec(cmake)?.[1] !== tag) {
+              throw new Error(`CMake project version at ${sha} must match ${tag}.`);
+            }
+
+            // A rerun can finish a partially created release, but must never move a tag.
+            const ref = `tags/${tag}`;
+            try {
+              const { data } = await github.rest.git.getRef({ ...repo, ref });
+              if (data.object.type !== "commit" || data.object.sha !== sha) {
+                throw new Error(`Existing tag ${tag} does not directly reference ${sha}.`);
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.git.createRef({ ...repo, ref: `refs/${ref}`, sha });
+            }
+            try {
+              await github.rest.repos.getReleaseByTag({ ...repo, tag });
+              core.info(`Release ${tag} already exists.`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              await github.rest.repos.createRelease({
+                ...repo, tag_name: tag, target_commitish: sha, name: pr.title, body: pr.body
+              });
+            }
